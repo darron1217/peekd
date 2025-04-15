@@ -31,8 +31,7 @@ type DiscoveryOption struct {
 	portUDP int
 	portTCP int
 
-	genesisConfig *eth.GenesisConfig
-	networkConfig *params.NetworkConfig
+	ethNetwork string
 }
 
 type DiscoveryOptionFunc func(*DiscoveryOption)
@@ -61,34 +60,28 @@ func WithPortTCP(port int) DiscoveryOptionFunc {
 	}
 }
 
-func WithGenesisConfig(genesisConfig *eth.GenesisConfig) DiscoveryOptionFunc {
+func WithEthNetwork(ethNetwork string) DiscoveryOptionFunc {
 	return func(o *DiscoveryOption) {
-		o.genesisConfig = genesisConfig
-	}
-}
-
-func WithNetworkConfig(networkConfig *params.NetworkConfig) DiscoveryOptionFunc {
-	return func(o *DiscoveryOption) {
-		o.networkConfig = networkConfig
+		o.ethNetwork = ethNetwork
 	}
 }
 
 type Discovery struct {
-	privateKey     *ecdsa.PrivateKey
-	node           *enode.LocalNode
+	privateKey *ecdsa.PrivateKey
+	node       *enode.LocalNode
+	discovers  chan *peer.AddrInfo
+
 	bootstrapNodes []*enode.Node
 	forkDigest     [4]byte
-	discovers      chan *peer.AddrInfo
 }
 
 func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	o := &DiscoveryOption{
-		privateKey:    nil,
-		ip:            "127.0.0.1",
-		portUDP:       8080,
-		portTCP:       8080,
-		genesisConfig: eth.GenesisConfigs[params.MainnetName],
-		networkConfig: params.BeaconNetworkConfig(),
+		privateKey: nil,
+		ip:         "127.0.0.1",
+		portUDP:    8080,
+		portTCP:    8080,
+		ethNetwork: params.MainnetName,
 	}
 
 	for _, opt := range opts {
@@ -118,12 +111,15 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 		syncBitV.SetBitAt(i, true)
 	}
 
-	forkDigest, err := forks.CreateForkDigest(o.genesisConfig.GenesisTime, o.genesisConfig.GenesisValidatorRoot)
+	genesisConfig := eth.GetGenesisConfig(o.ethNetwork)
+	networkConfig := eth.GetBeaconNetworkConfig(o.ethNetwork)
+
+	forkDigest, err := forks.CreateForkDigest(genesisConfig.GenesisTime, genesisConfig.GenesisValidatorRoot)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create fork digest")
 	}
 
-	nextForkVersion, nextForkEpoch, err := forks.NextForkData(slots.ToEpoch(slots.Since(o.genesisConfig.GenesisTime)))
+	nextForkVersion, nextForkEpoch, err := forks.NextForkData(slots.ToEpoch(slots.Since(genesisConfig.GenesisTime)))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get next fork data")
 	}
@@ -143,12 +139,12 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	localNode.Set(enr.IP(o.ip))
 	localNode.Set(enr.UDP(o.portUDP))
 	localNode.Set(enr.TCP(o.portTCP))
-	localNode.Set(enr.WithEntry(o.networkConfig.AttSubnetKey, attestBitV.Bytes()))
-	localNode.Set(enr.WithEntry(o.networkConfig.SyncCommsSubnetKey, syncBitV.Bytes()))
-	localNode.Set(enr.WithEntry(o.networkConfig.ETH2Key, forkIDBytes))
+	localNode.Set(enr.WithEntry(networkConfig.AttSubnetKey, attestBitV.Bytes()))
+	localNode.Set(enr.WithEntry(networkConfig.SyncCommsSubnetKey, syncBitV.Bytes()))
+	localNode.Set(enr.WithEntry(networkConfig.ETH2Key, forkIDBytes))
 
 	bootstrapNodes := make([]*enode.Node, 0)
-	for _, enrStr := range o.networkConfig.BootstrapNodes {
+	for _, enrStr := range networkConfig.BootstrapNodes {
 		bootstrapNode, err := enode.Parse(enode.ValidSchemes, enrStr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse bootstrap node enr %s", enrStr)
