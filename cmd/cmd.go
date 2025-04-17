@@ -25,6 +25,10 @@ var cmd = &cli.Command{
 			Name:    "Snow Park",
 			Address: "sinabro2dev@gmail.com",
 		},
+		&mail.Address{
+			Name:    "Darron Park",
+			Address: "darron1217@gmail.com",
+		},
 		// TODO: add author our team member
 	},
 	Copyright:             "", // TODO: add copyright as license
