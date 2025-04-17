@@ -114,6 +114,8 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	genesisConfig := eth.GetGenesisConfig(o.ethNetwork)
 	networkConfig := eth.GetBeaconNetworkConfig(o.ethNetwork)
 
+	ip := net.ParseIP(o.ip)
+
 	forkDigest, err := forks.CreateForkDigest(genesisConfig.GenesisTime, genesisConfig.GenesisValidatorRoot)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create fork digest")
@@ -136,7 +138,7 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	}
 
 	localNode := enode.NewLocalNode(memDB, o.privateKey)
-	localNode.Set(enr.IP(o.ip))
+	localNode.Set(enr.IPv4(ip))
 	localNode.Set(enr.UDP(o.portUDP))
 	localNode.Set(enr.TCP(o.portTCP))
 	localNode.Set(enr.WithEntry(networkConfig.AttSubnetKey, attestBitV.Bytes()))

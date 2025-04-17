@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"bytes"
 	"context"
 	"github.com/a41-official/peekd/eth"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -56,18 +57,18 @@ func beaconBlockHandler(network string, enc encoder.NetworkEncoding) TopicHandle
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var block ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
 			block = &ethtypes.SignedBeaconBlock{}
-		case beaconConfig.AltairForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
 			block = &ethtypes.SignedBeaconBlockAltair{}
-		case beaconConfig.BellatrixForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
 			block = &ethtypes.SignedBeaconBlockBellatrix{}
-		case beaconConfig.CapellaForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
 			block = &ethtypes.SignedBeaconBlockCapella{}
-		case beaconConfig.DenebForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
 			block = &ethtypes.SignedBeaconBlockDeneb{}
-		case beaconConfig.ElectraForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			block = &ethtypes.SignedBeaconBlockElectra{}
 		default:
 			return errors.New("unknown fork version for handling block")
@@ -91,9 +92,9 @@ func blobSidecarHandler(network string, enc encoder.NetworkEncoding) TopicHandle
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var blob ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.DenebForkVersion:
-		case beaconConfig.ElectraForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			blob = &ethtypes.BlobSidecar{}
 		default:
 			return errors.New("unknown fork version for handling blob")
@@ -117,14 +118,14 @@ func beaconAggregateAndProofHandler(network string, enc encoder.NetworkEncoding)
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var aggProof ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
 			aggProof = &ethtypes.SignedAggregateAttestationAndProof{}
-		case beaconConfig.ElectraForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			aggProof = &ethtypes.SignedAggregateAttestationAndProofElectra{}
 		default:
 			return errors.New("unknown fork version for handling aggregate proof")
@@ -148,14 +149,14 @@ func beaconAttestationHandler(network string, enc encoder.NetworkEncoding) Topic
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var att ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
 			att = &ethtypes.Attestation{}
-		case beaconConfig.ElectraForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			att = &ethtypes.SingleAttestation{}
 		default:
 			return errors.New("unknown fork version for handling attestation")
@@ -179,13 +180,13 @@ func syncCommitteeContributionAndProofHandler(network string, enc encoder.Networ
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var ctrProof ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
-		case beaconConfig.ElectraForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			ctrProof = &ethtypes.SignedContributionAndProof{}
 		default:
 			return errors.New("unknown fork version for handling contribution proof")
@@ -209,13 +210,13 @@ func syncCommitteeHandler(network string, enc encoder.NetworkEncoding) TopicHand
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var sync ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
-		case beaconConfig.ElectraForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			sync = &ethtypes.SyncCommitteeMessage{}
 		default:
 			return errors.New("unknown fork version for handling sync committee")
@@ -239,13 +240,13 @@ func proposerSlashingHandler(network string, enc encoder.NetworkEncoding) TopicH
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var pSlash ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
-		case beaconConfig.ElectraForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			pSlash = &ethtypes.ProposerSlashing{}
 		default:
 			return errors.New("unknown fork version for handling proposer slashing")
@@ -269,14 +270,14 @@ func attesterSlashingHandler(network string, enc encoder.NetworkEncoding) TopicH
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var aSlash ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
 			aSlash = &ethtypes.AttesterSlashing{}
-		case beaconConfig.ElectraForkVersion:
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			aSlash = &ethtypes.AttesterSlashingElectra{}
 		default:
 			return errors.New("unknown fork version for handling attester slashing")
@@ -300,13 +301,13 @@ func blsToExecutionChangeHandler(network string, enc encoder.NetworkEncoding) To
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var blsExec ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
-		case beaconConfig.ElectraForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			blsExec = &ethtypes.BLSToExecutionChange{}
 		default:
 			return errors.New("unknown fork version for handling bls execution change")
@@ -330,13 +331,13 @@ func voluntaryExitHandler(network string, enc encoder.NetworkEncoding) TopicHand
 		beaconConfig := eth.GetBeaconChainConfig(network)
 
 		var exit ssz.Unmarshaler
-		switch forkVersion[:] {
-		case beaconConfig.GenesisForkVersion:
-		case beaconConfig.AltairForkVersion:
-		case beaconConfig.BellatrixForkVersion:
-		case beaconConfig.CapellaForkVersion:
-		case beaconConfig.DenebForkVersion:
-		case beaconConfig.ElectraForkVersion:
+		switch {
+		case bytes.Equal(forkVersion[:], beaconConfig.GenesisForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.AltairForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.BellatrixForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.CapellaForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.DenebForkVersion):
+		case bytes.Equal(forkVersion[:], beaconConfig.ElectraForkVersion):
 			exit = &ethtypes.VoluntaryExit{}
 		default:
 			return errors.New("unknown fork version for handling voluntary exit")

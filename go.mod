@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0
-	github.com/ethereum/go-ethereum v1.15.8
+	github.com/ethereum/go-ethereum v1.15.0
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/libp2p/go-libp2p-mplex v0.10.0
 	github.com/libp2p/go-libp2p-pubsub v0.13.0
