@@ -184,7 +184,7 @@ func (d *Discovery) Serve(ctx context.Context) error {
 		bindIP = net.IPv4zero
 		networkVersion = "udp4"
 	default:
-		return fmt.Errorf("invalid IP address: %s", ip)
+		return errors.Errorf("invalid IP address: %s", ip)
 	}
 
 	udpAddr := &net.UDPAddr{
@@ -267,7 +267,7 @@ func extractPeerAddrInfo(node *enode.Node) (*peer.AddrInfo, error) {
 	} else if v6 := node.IP().To16(); len(v6) == net.IPv6len {
 		ipScheme = "ip6"
 	} else {
-		return nil, fmt.Errorf("invalid ip scheme from node's ip %s", node.IP())
+		return nil, errors.Errorf("invalid ip scheme from node's ip %s", node.IP())
 	}
 
 	maddrs := make([]ma.Multiaddr, 0)

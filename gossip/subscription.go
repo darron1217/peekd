@@ -14,7 +14,7 @@ type Subscription struct {
 	handler      TopicHandler
 }
 
-func NewSubscription(ethNetwork string, hostID peer.ID, subscription *pubsub.Subscription) *Subscription {
+func newSubscription(ethNetwork string, hostID peer.ID, subscription *pubsub.Subscription) *Subscription {
 	return &Subscription{
 		hostID:       hostID,
 		subscription: subscription,

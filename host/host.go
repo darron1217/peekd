@@ -76,7 +76,7 @@ func NewHost(opts ...HostOptionFunc) (*Host, error) {
 		privateKey: nil,
 		userAgent:  "libp2p-host",
 		rcMgr:      nil,
-		connMgr:    nil,
+		connMgr:    connmgr.NullConnMgr{}, // TODO: need to custom connection manager?
 	}
 
 	for _, opt := range opts {
@@ -100,11 +100,6 @@ func NewHost(opts ...HostOptionFunc) (*Host, error) {
 			return nil, errors.Wrap(err, "failed to create libp2p resource manager")
 		}
 		o.rcMgr = rcMgr
-	}
-
-	if o.connMgr == nil {
-		// TODO: need to custom connection manager?
-		o.connMgr = connmgr.NullConnMgr{}
 	}
 
 	multiaddr := fmt.Sprintf("/ip4/%s/tcp/%d", o.ip, o.port)

@@ -79,9 +79,9 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	o := &GossipSubOption{
 		ethNetwork:           params.MainnetName,
 		topics:               make([]string, 0),
-		peerScoreInspectFunc: nil,
-		peerScorePeriod:      time.Duration(0),
-		supervisor:           nil,
+		peerScoreInspectFunc: noopPeerScoreInspectFunc,
+		peerScorePeriod:      12 * time.Second,
+		supervisor:           suture.NewSimple("gossipSub"),
 		host:                 nil,
 	}
 
@@ -122,18 +122,6 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 		}
 
 		o.topics = allTopics
-	}
-
-	if o.peerScoreInspectFunc == nil {
-		o.peerScoreInspectFunc = noopPeerScoreInspectFunc
-	}
-
-	if o.peerScorePeriod == time.Duration(0) {
-		o.peerScorePeriod = 12 * time.Second
-	}
-
-	if o.supervisor == nil {
-		o.supervisor = suture.NewSimple("gossipSub")
 	}
 
 	if o.host == nil {
@@ -181,7 +169,7 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 			return errors.Wrapf(err, "failed to subscribe topic %s", topicName)
 		}
 
-		gs.supervisor.Add(NewSubscription(gs.ethNetwork, gs.host.ID(), subscription))
+		gs.supervisor.Add(newSubscription(gs.ethNetwork, gs.host.ID(), subscription))
 	}
 
 	return gs.supervisor.Serve(ctx)

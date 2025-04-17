@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/a41-official/peekd/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
 	"log/slog"
 	"time"
 )
@@ -15,11 +16,19 @@ type Dialer struct {
 	discovers <-chan *peer.AddrInfo
 }
 
-func NewDialer(host *host.Host, discovers <-chan *peer.AddrInfo) *Dialer {
+func NewDialer(host *host.Host, discovers <-chan *peer.AddrInfo) (*Dialer, error) {
+	if host == nil {
+		return nil, errors.New("host should be configured when creating dialer")
+	}
+
+	if discovers == nil {
+		return nil, errors.New("discovers channel should be configured when creating dialer")
+	}
+
 	return &Dialer{
 		host:      host,
 		discovers: discovers,
-	}
+	}, nil
 }
 
 func (d *Dialer) Serve(ctx context.Context) error {
