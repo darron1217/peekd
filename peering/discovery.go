@@ -102,12 +102,12 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	}
 
 	attestBitV := bitfield.NewBitvector64()
-	for i := uint64(0); i < params.BeaconConfig().AttestationSubnetCount; i++ {
+	for i := uint64(0); i < eth.GetBeaconChainConfig(o.ethNetwork).AttestationSubnetCount; i++ {
 		attestBitV.SetBitAt(i, true)
 	}
 
 	syncBitV := bitfield.Bitvector4{byte(0x00)}
-	for i := uint64(0); i < params.BeaconConfig().SyncCommitteeSubnetCount; i++ {
+	for i := uint64(0); i < eth.GetBeaconChainConfig(o.ethNetwork).SyncCommitteeSubnetCount; i++ {
 		syncBitV.SetBitAt(i, true)
 	}
 
