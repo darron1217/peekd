@@ -1,23 +1,22 @@
 version: "3.7"
 services:
   clickhouse:
-    image: yandex/clickhouse-server
-    restart: unless-stopped
+    image: clickhouse/clickhouse-server:24-alpine
     environment:
+      - CLICKHOUSE_DB=default
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=
-      - CLICKHOUSE_DB=default
-    hostname: clickhouse
     ports:
       - "8123:8123"
+      - "9000:9000"
     volumes:
       - ./.volumes/clickhouse:/var/lib/clickhouse
+      - ./migrations:/docker-entrypoint-initdb.d
 
   tabix:
     image: spoonest/clickhouse-tabix-web-client
-    container_name: clickhouse-tabix-web-client
-    restart: always
     ports:
       - "8081:80"
     environment:
       - CH_HOST=clickhouse:8123
+      - CH_NAME=default
