@@ -162,6 +162,7 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 		gs.host,
 		pubsub.WithPeerScore(gs.peerScore.params()),
 		pubsub.WithPeerScoreInspect(gs.peerScore.noopInspectFunc, gs.peerScore.inspectPeriod),
+		pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign),
 		//pubsub.WithGossipSubParams(), // TODO: need to custom
 		//pubsub.WithMessageIdFn(), // TODO: need to custom
 	)
