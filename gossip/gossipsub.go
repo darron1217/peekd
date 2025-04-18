@@ -3,6 +3,7 @@ package gossip
 import (
 	"context"
 	"fmt"
+	"github.com/prysmaticlabs/prysm/v5/math"
 	"log/slog"
 	"time"
 
@@ -18,7 +19,14 @@ import (
 )
 
 const (
-	gossipSubD = 8
+	gossipSubD   = 8
+	gossipSubDlo = 6
+	gossipSubDhi = 12
+
+	gossipSubMCacheLen    = 6
+	gossipSubMCacheGossip = 3
+
+	gossipSubHeartbeatInterval = 700 * time.Millisecond
 )
 
 type GossipSubOption struct {
@@ -160,11 +168,13 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 	gossipSub, err := pubsub.NewGossipSub(
 		ctx,
 		gs.host,
+		pubsub.WithGossipSubParams(gs.gossipSubParams()),
+		pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign),
+		pubsub.WithNoAuthor(),
+		//pubsub.WithMessageIdFn(), // TODO: need to custom
+		pubsub.WithMaxMessageSize(gs.maxMessageSize()),
 		pubsub.WithPeerScore(gs.peerScore.params()),
 		pubsub.WithPeerScoreInspect(gs.peerScore.noopInspectFunc, gs.peerScore.inspectPeriod),
-		pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign),
-		//pubsub.WithGossipSubParams(), // TODO: need to custom
-		//pubsub.WithMessageIdFn(), // TODO: need to custom
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create gossipSub")
@@ -188,4 +198,20 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (gs *GossipSub) gossipSubParams() pubsub.GossipSubParams {
+	gParams := pubsub.DefaultGossipSubParams()
+	gParams.D = gossipSubD
+	gParams.Dlo = gossipSubDlo
+	gParams.Dhi = gossipSubDhi
+	gParams.HistoryLength = gossipSubMCacheLen
+	gParams.HistoryGossip = gossipSubMCacheGossip
+	gParams.HeartbeatInterval = gossipSubHeartbeatInterval
+	return gParams
+}
+
+func (gs *GossipSub) maxMessageSize() int {
+	maxCompressedLen := encoder.MaxCompressedLen(eth.GetBeaconChainConfig(gs.ethNetwork).MaxPayloadSize)
+	return int(math.Max(maxCompressedLen+1024, 1024*1024))
 }
