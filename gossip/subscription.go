@@ -14,11 +14,11 @@ type Subscription struct {
 	handler      TopicHandler
 }
 
-func newSubscription(ethNetwork string, hostID peer.ID, subscription *pubsub.Subscription) *Subscription {
+func newSubscription(ethNetwork string, hostID peer.ID, subscription *pubsub.Subscription, handler TopicHandler) *Subscription {
 	return &Subscription{
 		hostID:       hostID,
 		subscription: subscription,
-		handler:      mappingTopicToHandler(ethNetwork, subscription.Topic()),
+		handler:      handler,
 	}
 }
 

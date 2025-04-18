@@ -3,6 +3,9 @@ package gossip
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/a41-official/peekd/eth"
 	"github.com/a41-official/peekd/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -12,8 +15,6 @@ import (
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/prysmaticlabs/prysm/v5/network/forks"
 	"github.com/thejerf/suture/v4"
-	"log/slog"
-	"time"
 )
 
 const (
@@ -82,6 +83,7 @@ type GossipSub struct {
 	peerScore  *peerScore
 	ethNetwork string
 	topics     []string
+	enc        encoder.NetworkEncoding
 }
 
 func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
@@ -147,6 +149,7 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 		peerScore:  newPeerScore(o.ethNetwork, o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
 		ethNetwork: o.ethNetwork,
 		topics:     o.topics,
+		enc:        encoder.SszNetworkEncoder{},
 	}, nil
 }
 
@@ -177,7 +180,9 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 			return errors.Wrapf(err, "failed to subscribe topic %s", topicName)
 		}
 
-		gs.supervisor.Add(newSubscription(gs.ethNetwork, gs.host.ID(), subscription))
+		topicHandler := gs.mappingTopicToHandler(gs.ethNetwork, topicName)
+
+		gs.supervisor.Add(newSubscription(gs.ethNetwork, gs.host.ID(), subscription, topicHandler))
 	}
 
 	<-ctx.Done()
