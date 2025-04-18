@@ -14,7 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/prysmaticlabs/prysm/v5/network/forks"
 	pb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
@@ -101,15 +100,8 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 		return nil, errors.Wrap(err, "failed to open peer's database")
 	}
 
-	attestBitV := bitfield.NewBitvector64()
-	for i := uint64(0); i < eth.GetBeaconChainConfig(o.ethNetwork).AttestationSubnetCount; i++ {
-		attestBitV.SetBitAt(i, true)
-	}
-
-	syncBitV := bitfield.Bitvector4{byte(0x00)}
-	for i := uint64(0); i < eth.GetBeaconChainConfig(o.ethNetwork).SyncCommitteeSubnetCount; i++ {
-		syncBitV.SetBitAt(i, true)
-	}
+	attestBitV := eth.GetAttestationAllSubnetBitvector(o.ethNetwork)
+	syncBitV := eth.GetSyncCommitteeAllSubnetBitvector(o.ethNetwork)
 
 	genesisConfig := eth.GetGenesisConfig(o.ethNetwork)
 	networkConfig := eth.GetBeaconNetworkConfig(o.ethNetwork)

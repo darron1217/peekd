@@ -2,6 +2,7 @@ package eth
 
 import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/prysmaticlabs/prysm/v5/consensus-types/primitives"
@@ -103,4 +104,20 @@ func GetSlotDuration(network string) time.Duration {
 
 func GetEpochDuration(network string) time.Duration {
 	return GetSlotDuration(network) * time.Duration(GetBeaconChainConfig(network).SlotsPerEpoch)
+}
+
+func GetAttestationAllSubnetBitvector(network string) bitfield.Bitvector64 {
+	attestBitV := bitfield.NewBitvector64()
+	for i := uint64(0); i < GetBeaconChainConfig(network).AttestationSubnetCount; i++ {
+		attestBitV.SetBitAt(i, true)
+	}
+	return attestBitV
+}
+
+func GetSyncCommitteeAllSubnetBitvector(network string) bitfield.Bitvector4 {
+	syncBitV := bitfield.Bitvector4{byte(0x00)}
+	for i := uint64(0); i < GetBeaconChainConfig(network).SyncCommitteeSubnetCount; i++ {
+		syncBitV.SetBitAt(i, true)
+	}
+	return syncBitV
 }
