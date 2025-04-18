@@ -23,8 +23,10 @@ func newSubscription(ethNetwork string, hostID peer.ID, subscription *pubsub.Sub
 }
 
 func (s *Subscription) Serve(ctx context.Context) error {
-	slog.Info("starting gossip subscription")
-	defer slog.Info("stopping gossip subscription")
+	slog.With("topic", s.subscription.Topic()).
+		Info("starting gossip subscription")
+	defer slog.With("topic", s.subscription.Topic()).
+		Info("stopping gossip subscription")
 
 	defer s.subscription.Cancel()
 	for {

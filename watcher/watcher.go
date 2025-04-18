@@ -23,11 +23,12 @@ import (
 const UserAgent = "peekd"
 
 type WatcherOption struct {
-	ecdsaPrivateKeyHex string
-	ip                 string
-	portUDP            int
-	portTCP            int
-	ethNetwork         string
+	ecdsaPrivateKeyHex       string
+	ip                       string
+	portUDP                  int
+	portTCP                  int
+	ethNetwork               string
+	estimateActiveValidators uint64
 }
 
 type WatcherOptionFunc func(*WatcherOption)
@@ -59,6 +60,12 @@ func WithPortTCP(port int) WatcherOptionFunc {
 func WithEthNetwork(ethNetwork string) WatcherOptionFunc {
 	return func(o *WatcherOption) {
 		o.ethNetwork = ethNetwork
+	}
+}
+
+func WithEstimateActiveValidators(estimateActiveValidators uint64) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.estimateActiveValidators = estimateActiveValidators
 	}
 }
 
@@ -117,6 +124,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 
 	gossipSub, err := gossip.NewGossipSub(
 		gossip.WithEthNetwork(o.ethNetwork),
+		gossip.WithEstimateActiveValidators(o.estimateActiveValidators),
 		gossip.WithSupervisor(supervisor),
 		gossip.WithHost(localHost),
 	)

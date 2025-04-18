@@ -96,3 +96,11 @@ func HasSubnets(network string, rawTopic string) (uint64, bool) {
 		return uint64(0), false
 	}
 }
+
+func GetSlotDuration(network string) time.Duration {
+	return 1 * time.Second * time.Duration(GetBeaconChainConfig(network).SecondsPerSlot)
+}
+
+func GetEpochDuration(network string) time.Duration {
+	return GetSlotDuration(network) * time.Duration(GetBeaconChainConfig(network).SlotsPerEpoch)
+}

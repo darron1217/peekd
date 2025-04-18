@@ -11,12 +11,14 @@ import (
 )
 
 const (
-	CmdWatcher             = "watcher"
-	FlagEcdsaPrivateKeyHex = "ecdsa-private-key-hex"
-	FlagIp                 = "ip"
-	FlagUDPPort            = "udp-port"
-	FlagTCPPort            = "tcp-port"
-	FlagNetwork            = "network"
+	CmdWatcher = "watcher"
+
+	FlagEcdsaPrivateKeyHex       = "ecdsa-private-key-hex"
+	FlagIp                       = "ip"
+	FlagUDPPort                  = "udp-port"
+	FlagTCPPort                  = "tcp-port"
+	FlagNetwork                  = "network"
+	FlagEstimateActiveValidators = "estimate-active-validators"
 )
 
 var cmdWatcher = &cli.Command{
@@ -53,6 +55,12 @@ var cmdWatcher = &cli.Command{
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "NETWORK")),
 			DefaultText: params.MainnetName,
 		},
+		&cli.UintFlag{
+			Name:        FlagEstimateActiveValidators,
+			Usage:       "estimate active validators in ethereum network",
+			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "ESTIMATE_ACTIVE_VALIDATORS")),
+			DefaultText: "0",
+		},
 	},
 }
 
@@ -76,11 +84,14 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	if cmd.IsSet(FlagNetwork) {
 		opts = append(opts, watcher.WithEthNetwork(cmd.String(FlagNetwork)))
 	}
+	if cmd.IsSet(FlagEstimateActiveValidators) {
+		opts = append(opts, watcher.WithEstimateActiveValidators(cmd.Uint(FlagEstimateActiveValidators)))
+	}
 
-	watcher, err := watcher.NewWatcher(opts...)
+	w, err := watcher.NewWatcher(opts...)
 	if err != nil {
 		return errors.Wrap(err, "failed to create watcher")
 	}
 
-	return watcher.Serve(ctx)
+	return w.Serve(ctx)
 }

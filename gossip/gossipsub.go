@@ -6,7 +6,6 @@ import (
 	"github.com/a41-official/peekd/eth"
 	"github.com/a41-official/peekd/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
@@ -17,15 +16,20 @@ import (
 	"time"
 )
 
+const (
+	gossipSubD = 8
+)
+
 type GossipSubOption struct {
 	supervisor *suture.Supervisor
 	host       *host.Host
 
-	topics     []string
-	ethNetwork string
+	topics                   []string
+	ethNetwork               string
+	estimateActiveValidators uint64
 
-	peerScoreInspectFunc pubsub.ExtendedPeerScoreInspectFn
-	peerScorePeriod      time.Duration
+	peerScoreInspectFunc   pubsub.ExtendedPeerScoreInspectFn
+	peerScoreInspectPeriod time.Duration
 }
 
 type GossipSubOptionFunc func(*GossipSubOption)
@@ -33,6 +37,12 @@ type GossipSubOptionFunc func(*GossipSubOption)
 func WithEthNetwork(ethNetwork string) GossipSubOptionFunc {
 	return func(o *GossipSubOption) {
 		o.ethNetwork = ethNetwork
+	}
+}
+
+func WithEstimateActiveValidators(estimateActiveValidators uint64) GossipSubOptionFunc {
+	return func(o *GossipSubOption) {
+		o.estimateActiveValidators = estimateActiveValidators
 	}
 }
 
@@ -48,9 +58,9 @@ func WithPeerScoreInspectFunc(inspectFunc pubsub.ExtendedPeerScoreInspectFn) Gos
 	}
 }
 
-func WithPeerScorePeriod(period time.Duration) GossipSubOptionFunc {
+func WithPeerScoreInspectPeriod(period time.Duration) GossipSubOptionFunc {
 	return func(o *GossipSubOption) {
-		o.peerScorePeriod = period
+		o.peerScoreInspectPeriod = period
 	}
 }
 
@@ -67,26 +77,33 @@ func WithHost(h *host.Host) GossipSubOptionFunc {
 }
 
 type GossipSub struct {
-	supervisor           *suture.Supervisor
-	host                 *host.Host
-	peerScoreInspectFunc pubsub.ExtendedPeerScoreInspectFn
-	peerScorePeriod      time.Duration
-	ethNetwork           string
-	topics               []string
+	supervisor *suture.Supervisor
+	host       *host.Host
+	peerScore  *peerScore
+	ethNetwork string
+	topics     []string
 }
 
 func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	o := &GossipSubOption{
-		ethNetwork:           params.MainnetName,
-		topics:               make([]string, 0),
-		peerScoreInspectFunc: noopPeerScoreInspectFunc,
-		peerScorePeriod:      12 * time.Second,
-		supervisor:           suture.NewSimple("gossipSub"),
-		host:                 nil,
+		ethNetwork:               params.MainnetName,
+		estimateActiveValidators: 0,
+		topics:                   make([]string, 0),
+		peerScoreInspectFunc:     noopPeerScoreInspectFunc,
+		peerScoreInspectPeriod:   12 * time.Second,
+		supervisor:               suture.NewSimple("gossipSub"),
+		host:                     nil,
 	}
 
 	for _, opt := range opts {
 		opt(o)
+	}
+	if o.host == nil {
+		return nil, errors.New("host must be configured when creating gossipSub")
+	}
+
+	if o.estimateActiveValidators == 0 {
+		return nil, errors.New("number of estimate active validators must be more than 0 when creating gossipSub")
 	}
 
 	if len(o.topics) == 0 {
@@ -124,23 +141,13 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 		o.topics = allTopics
 	}
 
-	if o.host == nil {
-		return nil, errors.New("host must be configured when creating gossipSub")
-	}
-
 	return &GossipSub{
-		supervisor:           o.supervisor,
-		host:                 o.host,
-		peerScoreInspectFunc: o.peerScoreInspectFunc,
-		peerScorePeriod:      o.peerScorePeriod,
-		ethNetwork:           o.ethNetwork,
-		topics:               o.topics,
+		supervisor: o.supervisor,
+		host:       o.host,
+		peerScore:  newPeerScore(o.ethNetwork, o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
+		ethNetwork: o.ethNetwork,
+		topics:     o.topics,
 	}, nil
-}
-
-// TODO: need to impl custom peer score inspect function
-
-func noopPeerScoreInspectFunc(_ map[peer.ID]*pubsub.PeerScoreSnapshot) {
 }
 
 func (gs *GossipSub) Serve(ctx context.Context) error {
@@ -150,7 +157,8 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 	gossipSub, err := pubsub.NewGossipSub(
 		ctx,
 		gs.host,
-		pubsub.WithPeerScoreInspect(gs.peerScoreInspectFunc, gs.peerScorePeriod),
+		pubsub.WithPeerScore(gs.peerScore.params()),
+		pubsub.WithPeerScoreInspect(gs.peerScore.noopInspectFunc, gs.peerScore.inspectPeriod),
 		//pubsub.WithGossipSubParams(), // TODO: need to custom
 		//pubsub.WithMessageIdFn(), // TODO: need to custom
 	)
@@ -172,5 +180,6 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 		gs.supervisor.Add(newSubscription(gs.ethNetwork, gs.host.ID(), subscription))
 	}
 
-	return gs.supervisor.Serve(ctx)
+	<-ctx.Done()
+	return ctx.Err()
 }
