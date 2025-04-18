@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+
 	"github.com/a41-official/peekd/gossip"
 	"github.com/a41-official/peekd/host"
 	"github.com/a41-official/peekd/peering"
+	"github.com/a41-official/peekd/repository"
 	"github.com/a41-official/peekd/reqresp"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	gcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -29,6 +31,7 @@ type WatcherOption struct {
 	portTCP                  int
 	ethNetwork               string
 	estimateActiveValidators uint64
+	repo                     repository.Repository
 }
 
 type WatcherOptionFunc func(*WatcherOption)
@@ -69,8 +72,15 @@ func WithEstimateActiveValidators(estimateActiveValidators uint64) WatcherOption
 	}
 }
 
+func WithRepository(repo repository.Repository) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.repo = repo
+	}
+}
+
 type Watcher struct {
 	supervisor *suture.Supervisor
+	repo       repository.Repository
 }
 
 func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
@@ -148,6 +158,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 
 	return &Watcher{
 		supervisor: supervisor,
+		repo:       o.repo,
 	}, nil
 }
 
@@ -182,5 +193,6 @@ func retrievePrivateKeys(ecdsaKeyHex string) (*ecdsa.PrivateKey, crypto.PrivKey,
 }
 
 func (w *Watcher) Serve(ctx context.Context) error {
+	defer w.repo.Close()
 	return w.supervisor.Serve(ctx)
 }
