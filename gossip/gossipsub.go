@@ -145,6 +145,9 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 			p2p.AttesterSlashingSubnetTopicFormat,
 			p2p.BlsToExecutionChangeSubnetTopicFormat,
 			p2p.ExitSubnetTopicFormat,
+			// TODO: add light client topics
+			// p2p.LightClientFinalityUpdateSubnetTopicFormat,
+			// p2p.LightClientOptimisticUpdateSubnetTopicFormat,
 		}
 
 		allTopics := make([]string, 0)
