@@ -5,24 +5,32 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"time"
 
+	"github.com/a41-official/peekd/eth"
 	"github.com/a41-official/peekd/repository"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	ssz "github.com/prysmaticlabs/fastssz"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
+	"github.com/prysmaticlabs/prysm/v5/config/params"
+	"github.com/prysmaticlabs/prysm/v5/consensus-types/primitives"
 	ethtypes "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 )
 
 type BeaconMessageProcessor struct {
-	enc  encoder.NetworkEncoding
-	repo repository.Repository
+	enc          encoder.NetworkEncoding
+	repo         repository.Repository
+	beaconConfig *params.BeaconChainConfig
+	genesisTime  time.Time
 }
 
-func NewBeaconMessageProcessor(repo repository.Repository) *BeaconMessageProcessor {
+func NewBeaconMessageProcessor(ethNetwork string, repo repository.Repository) *BeaconMessageProcessor {
 	return &BeaconMessageProcessor{
-		repo: repo,
-		enc:  encoder.SszNetworkEncoder{},
+		repo:         repo,
+		enc:          encoder.SszNetworkEncoder{},
+		beaconConfig: eth.GetBeaconChainConfig(ethNetwork),
+		genesisTime:  eth.GetGenesisConfig(ethNetwork).GenesisTime,
 	}
 }
 
@@ -36,157 +44,106 @@ func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Messag
 
 	// beacon_block
 	case *ethtypes.SignedBeaconBlock:
-		blockMessage, err := p.renderBlockMessage(msg, d)
-		p.processBeaconMessageMetadata(&blockMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render phase0 block message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("block phase0 received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockAltair:
-		blockMessage, err := p.renderBlockMessageAltair(msg, d)
-		p.processBeaconMessageMetadata(&blockMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render altair block message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("block altair received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockBellatrix:
-		blockMessage, err := p.renderBlockMessageBellatrix(msg, d)
-		p.processBeaconMessageMetadata(&blockMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render bellatrix block message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("block bellatrix received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockCapella:
-		blockMessage, err := p.renderBlockMessageCapella(msg, d)
-		p.processBeaconMessageMetadata(&blockMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render capella block message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("block capella received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockDeneb:
-		blockMessage, err := p.renderBlockMessageDeneb(msg, d)
-		p.processBeaconMessageMetadata(&blockMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render deneb block message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("block deneb received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockElectra:
-		blockMessage, err := p.renderBlockMessageElectra(msg, d)
-		p.processBeaconMessageMetadata(&blockMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render electra block message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("block electra received", "topic", msg.Topic, "data", msg.Data)
 
 	// beacon_aggregate_and_proof
 	case *ethtypes.SignedAggregateAttestationAndProof:
-		aggregateAttestationAndProofMessage, err := p.renderAggregateAttestationAndProofMessage(msg, d)
-		p.processBeaconMessageMetadata(&aggregateAttestationAndProofMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render aggregate attestation and proof message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Message.Aggregate.Data.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("aggregate attestation and proof received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedAggregateAttestationAndProofElectra:
-		aggregateAttestationAndProofElectraMessage, err := p.renderAggregateAttestationAndProofElectraMessage(msg, d)
-		p.processBeaconMessageMetadata(&aggregateAttestationAndProofElectraMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render aggregate attestation and proof electra message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Message.Aggregate.Data.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("aggregate attestation and proof electra received", "topic", msg.Topic, "data", msg.Data)
 
 	// beacon_sync_committee_contribution_and_proof
 	case *ethtypes.SignedContributionAndProof:
-		syncCommitteeContributionAndProofMessage, err := p.renderSyncCommitteeContributionAndProofMessage(msg, d)
-		p.processBeaconMessageMetadata(&syncCommitteeContributionAndProofMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render sync committee contribution and proof message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Message.Contribution.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("sync committee contribution and proof received", "topic", msg.Topic, "data", msg.Data)
 
 	// proposer_slashing
 	case *ethtypes.ProposerSlashing:
-		proposerSlashingMessage, err := p.renderProposerSlashingMessage(msg, d)
-		p.processBeaconMessageMetadata(&proposerSlashingMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render proposer slashing message")
-		}
+		metadata := p.newGeneralMetadata(msg)
+		p.processGeneralMessageMetadata(metadata)
 		slog.Debug("proposer slashing received", "topic", msg.Topic, "data", msg.Data)
 
 	// attester_slashing
 	case *ethtypes.AttesterSlashing:
-		attesterSlashingMessage, err := p.renderAttesterSlashingMessage(msg, d)
-		p.processBeaconMessageMetadata(&attesterSlashingMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render attester slashing message")
-		}
+		metadata := p.newGeneralMetadata(msg)
+		p.processGeneralMessageMetadata(metadata)
 		slog.Debug("attester slashing received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.AttesterSlashingElectra:
-		attesterSlashingElectraMessage, err := p.renderAttesterSlashingElectraMessage(msg, d)
-		p.processBeaconMessageMetadata(&attesterSlashingElectraMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render attester slashing electra message")
-		}
+		metadata := p.newGeneralMetadata(msg)
+		p.processGeneralMessageMetadata(metadata)
 		slog.Debug("attester slashing electra received", "topic", msg.Topic, "data", msg.Data)
 
 	// voluntary_exit
 	case *ethtypes.VoluntaryExit:
-		voluntaryExitMessage, err := p.renderVoluntaryExitMessage(msg, d)
-		p.processBeaconMessageMetadata(&voluntaryExitMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render voluntary exit message")
-		}
+		metadata := p.newGeneralMetadata(msg)
+		p.processGeneralMessageMetadata(metadata)
 		slog.Debug("voluntary exit received", "topic", msg.Topic, "data", msg.Data)
 
 	// bls to execution change
 	case *ethtypes.BLSToExecutionChange:
-		blsToExecutionChangeMessage, err := p.renderBLSToExecutionChangeMessage(msg, d)
-		p.processBeaconMessageMetadata(&blsToExecutionChangeMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render bls to execution change message")
-		}
+		metadata := p.newGeneralMetadata(msg)
+		p.processGeneralMessageMetadata(metadata)
 		slog.Debug("bls to execution change received", "topic", msg.Topic, "data", msg.Data)
 
 	// --- subnet topics ---
 
 	// beacon_attestation
 	case *ethtypes.Attestation:
-		attestationMessage, err := p.renderAttestationMessage(msg, d)
-		p.processBeaconMessageMetadata(&attestationMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render attestation message")
-		}
-		slog.Debug("attestation message", "data", attestationMessage.Metadata)
+		metadata := p.newSlotMetadata(msg, d.Data.Slot)
+		p.processSlotMessageMetadata(metadata)
+		slog.Debug("attestation received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.AttestationElectra:
-		attestationElectraMessage, err := p.renderAttestationElectraMessage(msg, d)
-		p.processBeaconMessageMetadata(&attestationElectraMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render attestation electra message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Data.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("attestation electra received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SingleAttestation:
-		singleAttestationMessage, err := p.renderSingleAttestationMessage(msg, d)
-		p.processBeaconMessageMetadata(&singleAttestationMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render single attestation message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Data.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("single attestation received", "topic", msg.Topic, "data", msg.Data)
 
 	// sync committee message
 	case *ethtypes.SyncCommitteeMessage:
-		syncCommitteeMessage, err := p.renderSyncCommitteeMessage(msg, d)
-		p.processBeaconMessageMetadata(&syncCommitteeMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render sync committee message")
-		}
+		metadata := p.newSlotMetadata(msg, d.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("sync committee message received", "topic", msg.Topic, "data", msg.Data)
+
+	// sync committee contribution
+	case *ethtypes.SyncCommitteeContribution:
+		metadata := p.newSlotMetadata(msg, d.Slot)
+		p.processSlotMessageMetadata(metadata)
+		slog.Debug("sync committee contribution received", "topic", msg.Topic, "data", msg.Data)
 
 	// blob sidecar
 	case *ethtypes.BlobSidecar:
-		blobSidecarMessage, err := p.renderBlobSidecarMessage(msg, d)
-		p.processBeaconMessageMetadata(&blobSidecarMessage.Metadata)
-		if err != nil {
-			return errors.Wrap(err, "failed to render blob sidecar message")
-		}
+		metadata := p.newSlotMetadata(msg, d.SignedBlockHeader.Header.Slot)
+		p.processSlotMessageMetadata(metadata)
 		slog.Debug("blob sidecar received", "topic", msg.Topic, "data", msg.Data)
 
 	default:
@@ -196,213 +153,57 @@ func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Messag
 	return nil
 }
 
-func (p *BeaconMessageProcessor) processBeaconMessageMetadata(
-	metadata *BeaconMessageMetadata,
+func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
+	metadata *GeneralMessageMetadata,
 ) error {
 
-	slog.Info("processing beacon message metadata", "metadata", metadata)
+	slog.Info("processing general message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize)
 
 	// TODO: process metadata
 
 	return nil
 }
 
-func (p *BeaconMessageProcessor) renderBlockMessage(
-	msg *pubsub.Message,
-	block *ethtypes.SignedBeaconBlock,
-) (*Phase0BlockMessage, error) {
-	return &Phase0BlockMessage{
-		Metadata: newMetadata(msg),
-		Block:    block,
-	}, nil
+func (p *BeaconMessageProcessor) processSlotMessageMetadata(
+	metadata *SlotMessageMetadata,
+) error {
+
+	slog.Info("processing slot message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize, "msg_delay_in_slot", metadata.MsgDelayInSlot, "slot", metadata.Slot)
+
+	// TODO: process metadata
+
+	return nil
 }
 
-func (p *BeaconMessageProcessor) renderBlockMessageAltair(
-	msg *pubsub.Message,
-	block *ethtypes.SignedBeaconBlockAltair,
-) (*AltairBlockMessage, error) {
-	return &AltairBlockMessage{
-		Metadata: newMetadata(msg),
-		Block:    block,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderBlockMessageBellatrix(
-	msg *pubsub.Message,
-	block *ethtypes.SignedBeaconBlockBellatrix,
-) (*BellatrixBlockMessage, error) {
-	return &BellatrixBlockMessage{
-		Metadata: newMetadata(msg),
-		Block:    block,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderBlockMessageCapella(
-	msg *pubsub.Message,
-	block *ethtypes.SignedBeaconBlockCapella,
-) (*CapellaBlockMessage, error) {
-	return &CapellaBlockMessage{
-		Metadata: newMetadata(msg),
-		Block:    block,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderBlockMessageDeneb(
-	msg *pubsub.Message,
-	block *ethtypes.SignedBeaconBlockDeneb,
-) (*DenebBlockMessage, error) {
-	return &DenebBlockMessage{
-		Metadata: newMetadata(msg),
-		Block:    block,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderBlockMessageElectra(
-	msg *pubsub.Message,
-	block *ethtypes.SignedBeaconBlockElectra,
-) (*ElectraBlockMessage, error) {
-	return &ElectraBlockMessage{
-		Metadata: newMetadata(msg),
-		Block:    block,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderAggregateAttestationAndProofMessage(
-	msg *pubsub.Message,
-	agg *ethtypes.SignedAggregateAttestationAndProof,
-) (*AggregateAttestationAndProofMessage, error) {
-	return &AggregateAttestationAndProofMessage{
-		Metadata:                     newMetadata(msg),
-		AggregateAttestationAndProof: agg,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderAggregateAttestationAndProofElectraMessage(
-	msg *pubsub.Message,
-	agg *ethtypes.SignedAggregateAttestationAndProofElectra,
-) (*AggregateAttestationAndProofElectraMessage, error) {
-	return &AggregateAttestationAndProofElectraMessage{
-		Metadata:                     newMetadata(msg),
-		AggregateAttestationAndProof: agg,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderSyncCommitteeContributionAndProofMessage(
-	msg *pubsub.Message,
-	proof *ethtypes.SignedContributionAndProof,
-) (*SyncCommitteeContributionAndProofMessage, error) {
-	return &SyncCommitteeContributionAndProofMessage{
-		Metadata:                          newMetadata(msg),
-		SyncCommitteeContributionAndProof: proof,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderProposerSlashingMessage(
-	msg *pubsub.Message,
-	slashing *ethtypes.ProposerSlashing,
-) (*ProposerSlashingMessage, error) {
-	return &ProposerSlashingMessage{
-		Metadata:         newMetadata(msg),
-		ProposerSlashing: slashing,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderAttesterSlashingMessage(
-	msg *pubsub.Message,
-	slashing *ethtypes.AttesterSlashing,
-) (*AttesterSlashingMessage, error) {
-	return &AttesterSlashingMessage{
-		Metadata:         newMetadata(msg),
-		AttesterSlashing: slashing,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderAttesterSlashingElectraMessage(
-	msg *pubsub.Message,
-	slashing *ethtypes.AttesterSlashingElectra,
-) (*AttesterSlashingElectraMessage, error) {
-	return &AttesterSlashingElectraMessage{
-		Metadata:         newMetadata(msg),
-		AttesterSlashing: slashing,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderVoluntaryExitMessage(
-	msg *pubsub.Message,
-	exit *ethtypes.VoluntaryExit,
-) (*VoluntaryExitMessage, error) {
-	return &VoluntaryExitMessage{
-		Metadata:      newMetadata(msg),
-		VoluntaryExit: exit,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderBLSToExecutionChangeMessage(
-	msg *pubsub.Message,
-	change *ethtypes.BLSToExecutionChange,
-) (*BLSToExecutionChangeMessage, error) {
-	return &BLSToExecutionChangeMessage{
-		Metadata:             newMetadata(msg),
-		BLSToExecutionChange: change,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderAttestationMessage(
-	msg *pubsub.Message,
-	att *ethtypes.Attestation,
-) (*AttestationMessage, error) {
-	return &AttestationMessage{
-		Metadata:    newMetadata(msg),
-		Attestation: att,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderAttestationElectraMessage(
-	msg *pubsub.Message,
-	att *ethtypes.AttestationElectra,
-) (*AttestationElectraMessage, error) {
-	return &AttestationElectraMessage{
-		Metadata:    newMetadata(msg),
-		Attestation: att,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderSingleAttestationMessage(
-	msg *pubsub.Message,
-	att *ethtypes.SingleAttestation,
-) (*SingleAttestationMessage, error) {
-	return &SingleAttestationMessage{
-		Metadata:          newMetadata(msg),
-		SingleAttestation: att,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderSyncCommitteeMessage(
-	msg *pubsub.Message,
-	sync *ethtypes.SyncCommitteeMessage,
-) (*SyncCommitteeMessage, error) {
-	return &SyncCommitteeMessage{
-		Metadata:      newMetadata(msg),
-		SyncCommittee: sync,
-	}, nil
-}
-
-func (p *BeaconMessageProcessor) renderBlobSidecarMessage(
-	msg *pubsub.Message,
-	blob *ethtypes.BlobSidecar,
-) (*BlobSidecarMessage, error) {
-	return &BlobSidecarMessage{
-		Metadata: newMetadata(msg),
-		Blob:     blob,
-	}, nil
-}
-
-func newMetadata(msg *pubsub.Message) BeaconMessageMetadata {
-	return BeaconMessageMetadata{
-		PeerID:  msg.ReceivedFrom.String(),
-		Topic:   msg.GetTopic(),
-		Seq:     msg.GetSeqno(),
-		MsgID:   hex.EncodeToString([]byte(msg.ID)),
-		MsgSize: len(msg.Data),
+func (p *BeaconMessageProcessor) newGeneralMetadata(msg *pubsub.Message) *GeneralMessageMetadata {
+	msgArrival := time.Now()
+	return &GeneralMessageMetadata{
+		PeerID:     msg.ReceivedFrom.String(),
+		Topic:      msg.GetTopic(),
+		MsgID:      hex.EncodeToString([]byte(msg.ID)),
+		MsgSize:    len(msg.Data),
+		MsgArrival: msgArrival,
 	}
+}
+
+func (p *BeaconMessageProcessor) newSlotMetadata(msg *pubsub.Message, slot primitives.Slot) *SlotMessageMetadata {
+	msgArrival := time.Now()
+	return &SlotMessageMetadata{
+		PeerID:         msg.ReceivedFrom.String(),
+		Topic:          msg.GetTopic(),
+		MsgID:          hex.EncodeToString([]byte(msg.ID)),
+		MsgSize:        len(msg.Data),
+		MsgArrival:     msgArrival,
+		MsgDelayInSlot: p.getDelayInSlot(msgArrival, slot),
+		Slot:           uint64(slot),
+	}
+}
+
+func (p *BeaconMessageProcessor) getDelayInSlot(arrivalTime time.Time, slot primitives.Slot) time.Duration {
+	// get slot time since genesis
+	slotTime := p.genesisTime.Add((time.Duration(slot) * time.Second * time.Duration(p.beaconConfig.SecondsPerSlot)))
+
+	// compare the arrival time to the base-slot time
+	inSlotTime := arrivalTime.Sub(slotTime)
+	return inSlotTime
 }

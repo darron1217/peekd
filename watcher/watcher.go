@@ -146,7 +146,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	}
 
 	// initialize message processor
-	messageProcessor := processor.NewBeaconMessageProcessor(repo)
+	messageProcessor := processor.NewBeaconMessageProcessor(o.ethNetwork, repo)
 
 	// initialize p2p
 	ecdsaKey, secpKey, err := retrievePrivateKeys(o.ecdsaPrivateKeyHex)
