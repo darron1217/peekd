@@ -79,6 +79,7 @@ func (gs *GossipSub) blobSidecarHandler(ctx context.Context, msg *pubsub.Message
 	var blob ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		blob = &ethtypes.BlobSidecar{}
 	default:
@@ -97,9 +98,13 @@ func (gs *GossipSub) beaconAggregateAndProofHandler(ctx context.Context, msg *pu
 	var aggProof ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
 		aggProof = &ethtypes.SignedAggregateAttestationAndProof{}
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
@@ -120,9 +125,13 @@ func (gs *GossipSub) beaconAttestationHandler(ctx context.Context, msg *pubsub.M
 	var att ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
 		att = &ethtypes.Attestation{}
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
@@ -143,10 +152,15 @@ func (gs *GossipSub) syncCommitteeContributionAndProofHandler(ctx context.Contex
 	var ctrProof ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		ctrProof = &ethtypes.SignedContributionAndProof{}
 	default:
@@ -165,10 +179,15 @@ func (gs *GossipSub) syncCommitteeHandler(ctx context.Context, msg *pubsub.Messa
 	var sync ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		sync = &ethtypes.SyncCommitteeMessage{}
 	default:
@@ -187,10 +206,15 @@ func (gs *GossipSub) proposerSlashingHandler(ctx context.Context, msg *pubsub.Me
 	var pSlash ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		pSlash = &ethtypes.ProposerSlashing{}
 	default:
@@ -209,10 +233,16 @@ func (gs *GossipSub) attesterSlashingHandler(ctx context.Context, msg *pubsub.Me
 	var aSlash ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		aSlash = &ethtypes.AttesterSlashing{}
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		aSlash = &ethtypes.AttesterSlashingElectra{}
@@ -232,10 +262,15 @@ func (gs *GossipSub) blsToExecutionChangeHandler(ctx context.Context, msg *pubsu
 	var blsExec ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		blsExec = &ethtypes.BLSToExecutionChange{}
 	default:
@@ -254,10 +289,15 @@ func (gs *GossipSub) voluntaryExitHandler(ctx context.Context, msg *pubsub.Messa
 	var exit ssz.Unmarshaler
 	switch {
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+		fallthrough
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		exit = &ethtypes.VoluntaryExit{}
 	default:
