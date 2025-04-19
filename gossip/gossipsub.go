@@ -10,6 +10,7 @@ import (
 	"github.com/a41-official/peekd/host"
 	"github.com/a41-official/peekd/processor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pubsubpb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
@@ -187,7 +188,9 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 		pubsub.WithGossipSubParams(gs.gossipSubParams()),
 		pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign),
 		pubsub.WithNoAuthor(),
-		//pubsub.WithMessageIdFn(), // TODO: need to custom
+		pubsub.WithMessageIdFn(func(pmsg *pubsubpb.Message) string {
+			return p2p.MsgID(gs.beaconConfig.GenesisValidatorsRoot[:], pmsg)
+		}),
 		pubsub.WithMaxMessageSize(gs.maxMessageSize()),
 		pubsub.WithPeerScore(gs.peerScore.params()),
 		pubsub.WithPeerScoreInspect(gs.peerScore.noopInspectFunc, gs.peerScore.inspectPeriod),
