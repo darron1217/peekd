@@ -3,7 +3,6 @@ package gossip
 import (
 	"context"
 	"fmt"
-	"github.com/prysmaticlabs/prysm/v5/math"
 	"log/slog"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
+	"github.com/prysmaticlabs/prysm/v5/math"
 	"github.com/prysmaticlabs/prysm/v5/network/forks"
 	"github.com/thejerf/suture/v4"
 )
@@ -100,7 +100,8 @@ type GossipSub struct {
 	peerScore        *peerScore
 	ethNetwork       string
 	topics           []string
-	enc              encoder.NetworkEncoding
+	forkVersion      [4]byte
+	beaconConfig     *params.BeaconChainConfig
 	messageProcessor *processor.BeaconMessageProcessor
 }
 
@@ -167,7 +168,8 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 		peerScore:        newPeerScore(o.ethNetwork, o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
 		ethNetwork:       o.ethNetwork,
 		topics:           o.topics,
-		enc:              encoder.SszNetworkEncoder{},
+		forkVersion:      eth.GetCurrentForkVersion(o.ethNetwork),
+		beaconConfig:     eth.GetBeaconChainConfig(o.ethNetwork),
 		messageProcessor: o.messageProcessor,
 	}, nil
 }
