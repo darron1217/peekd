@@ -3,14 +3,15 @@ package gossip
 import (
 	"bytes"
 	"context"
+	"log/slog"
+	"strings"
+
 	"github.com/a41-official/peekd/eth"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	ssz "github.com/prysmaticlabs/fastssz"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	ethtypes "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
-	"log/slog"
-	"strings"
 )
 
 type TopicHandler = func(context.Context, *pubsub.Message) error
@@ -73,7 +74,7 @@ func (gs *GossipSub) beaconBlockHandler(ctx context.Context, msg *pubsub.Message
 		return errors.Wrap(err, "failed to decode block from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("block", block).
 		Debug("handled block from gossip")
@@ -97,7 +98,7 @@ func (gs *GossipSub) blobSidecarHandler(ctx context.Context, msg *pubsub.Message
 		return errors.Wrap(err, "failed to decode blob from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("blob", blob).
 		Debug("handled blob from gossip")
@@ -126,7 +127,7 @@ func (gs *GossipSub) beaconAggregateAndProofHandler(ctx context.Context, msg *pu
 		return errors.Wrap(err, "failed to decode aggregate proof from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("aggregate_proof", aggProof).
 		Debug("handled aggregate proof from gossip")
@@ -155,7 +156,7 @@ func (gs *GossipSub) beaconAttestationHandler(ctx context.Context, msg *pubsub.M
 		return errors.Wrap(err, "failed to decode attestation from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("attestation", att).
 		Debug("handled aggregate proof from gossip")
@@ -183,7 +184,7 @@ func (gs *GossipSub) syncCommitteeContributionAndProofHandler(ctx context.Contex
 		return errors.Wrap(err, "failed to decode contribution proof from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("contribution_proof", ctrProof).
 		Debug("handled contribution proof from gossip")
@@ -211,7 +212,7 @@ func (gs *GossipSub) syncCommitteeHandler(ctx context.Context, msg *pubsub.Messa
 		return errors.Wrap(err, "failed to decode sync committee from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("sync_committee", sync).
 		Debug("handled sync committee from gossip")
@@ -239,7 +240,7 @@ func (gs *GossipSub) proposerSlashingHandler(ctx context.Context, msg *pubsub.Me
 		return errors.Wrap(err, "failed to decode proposer slashing from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("proposer_slashing", pSlash).
 		Debug("handled proposer slashing from gossip")
@@ -268,7 +269,7 @@ func (gs *GossipSub) attesterSlashingHandler(ctx context.Context, msg *pubsub.Me
 		return errors.Wrap(err, "failed to decode attester slashing from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("attester_slashing", aSlash).
 		Debug("handled attester slashing from gossip")
@@ -296,7 +297,7 @@ func (gs *GossipSub) blsToExecutionChangeHandler(ctx context.Context, msg *pubsu
 		return errors.Wrap(err, "failed to decode bls execution change from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("bls_execution_change", blsExec).
 		Debug("handled bls execution change from gossip")
@@ -324,7 +325,7 @@ func (gs *GossipSub) voluntaryExitHandler(ctx context.Context, msg *pubsub.Messa
 		return errors.Wrap(err, "failed to decode voluntary exit from gossip data")
 	}
 
-	// TODO: need to custom
+	gs.messageProcessor.Process(ctx, msg)
 
 	slog.With("voluntary_exit", exit).
 		Debug("handled voluntary exit from gossip")

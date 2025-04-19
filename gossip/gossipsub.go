@@ -9,6 +9,7 @@ import (
 
 	"github.com/a41-official/peekd/eth"
 	"github.com/a41-official/peekd/host"
+	"github.com/a41-official/peekd/processor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
@@ -39,6 +40,8 @@ type GossipSubOption struct {
 
 	peerScoreInspectFunc   pubsub.ExtendedPeerScoreInspectFn
 	peerScoreInspectPeriod time.Duration
+
+	messageProcessor *processor.BeaconMessageProcessor
 }
 
 type GossipSubOptionFunc func(*GossipSubOption)
@@ -85,13 +88,20 @@ func WithHost(h *host.Host) GossipSubOptionFunc {
 	}
 }
 
+func WithMessageProcessor(processor *processor.BeaconMessageProcessor) GossipSubOptionFunc {
+	return func(o *GossipSubOption) {
+		o.messageProcessor = processor
+	}
+}
+
 type GossipSub struct {
-	supervisor *suture.Supervisor
-	host       *host.Host
-	peerScore  *peerScore
-	ethNetwork string
-	topics     []string
-	enc        encoder.NetworkEncoding
+	supervisor       *suture.Supervisor
+	host             *host.Host
+	peerScore        *peerScore
+	ethNetwork       string
+	topics           []string
+	enc              encoder.NetworkEncoding
+	messageProcessor *processor.BeaconMessageProcessor
 }
 
 func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
@@ -152,12 +162,13 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	}
 
 	return &GossipSub{
-		supervisor: o.supervisor,
-		host:       o.host,
-		peerScore:  newPeerScore(o.ethNetwork, o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
-		ethNetwork: o.ethNetwork,
-		topics:     o.topics,
-		enc:        encoder.SszNetworkEncoder{},
+		supervisor:       o.supervisor,
+		host:             o.host,
+		peerScore:        newPeerScore(o.ethNetwork, o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
+		ethNetwork:       o.ethNetwork,
+		topics:           o.topics,
+		enc:              encoder.SszNetworkEncoder{},
+		messageProcessor: o.messageProcessor,
 	}, nil
 }
 

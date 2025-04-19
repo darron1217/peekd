@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/a41-official/peekd/repository"
-	"github.com/a41-official/peekd/repository/clickhouse"
+	"log/slog"
+
 	"github.com/a41-official/peekd/watcher"
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/urfave/cli/v3"
-	"log/slog"
 )
 
 const (
@@ -133,15 +132,24 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	if cmd.IsSet(FlagEstimateActiveValidators) {
 		opts = append(opts, watcher.WithEstimateActiveValidators(cmd.Uint(FlagEstimateActiveValidators)))
 	}
-
-	// initialize repository
-	repo, err := initializeRepository(ctx, cmd)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize repository")
+	if cmd.IsSet(FlagDbType) {
+		opts = append(opts, watcher.WithDBType(cmd.String(FlagDbType)))
 	}
-	defer repo.Close()
-
-	opts = append(opts, watcher.WithRepository(repo))
+	if cmd.IsSet(FlagDbHost) {
+		opts = append(opts, watcher.WithDBHost(cmd.String(FlagDbHost)))
+	}
+	if cmd.IsSet(FlagDbPort) {
+		opts = append(opts, watcher.WithDBPort(int(cmd.Int(FlagDbPort))))
+	}
+	if cmd.IsSet(FlagDbName) {
+		opts = append(opts, watcher.WithDBName(cmd.String(FlagDbName)))
+	}
+	if cmd.IsSet(FlagDbUser) {
+		opts = append(opts, watcher.WithDBUser(cmd.String(FlagDbUser)))
+	}
+	if cmd.IsSet(FlagDbPassword) {
+		opts = append(opts, watcher.WithDBPassword(cmd.String(FlagDbPassword)))
+	}
 
 	w, err := watcher.NewWatcher(opts...)
 	if err != nil {
@@ -149,37 +157,4 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return w.Serve(ctx)
-}
-
-func initializeRepository(ctx context.Context, cmd *cli.Command) (repository.Repository, error) {
-	dbType := cmd.String(FlagDbType)
-
-	switch dbType {
-	case "clickhouse":
-		// Configure ClickHouse
-		chConfig := clickhouse.Config{
-			Host:     cmd.String(FlagDbHost),
-			Port:     uint16(cmd.Int(FlagDbPort)),
-			Database: cmd.String(FlagDbName),
-			Username: cmd.String(FlagDbUser),
-			Password: cmd.String(FlagDbPassword),
-		}
-
-		// Configure repository
-		repoConfig := repository.Config{
-			Type:       repository.RepositoryTypeClickHouse,
-			ClickHouse: chConfig,
-		}
-
-		// Initialize repository
-		repo, err := repository.NewRepository(repoConfig)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create repository")
-		}
-		slog.Info("repository initialized", "type", dbType)
-
-		return repo, nil
-	default:
-		return nil, errors.Errorf("unsupported database type: %s", dbType)
-	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/a41-official/peekd/gossip"
 	"github.com/a41-official/peekd/host"
 	"github.com/a41-official/peekd/peering"
+	"github.com/a41-official/peekd/processor"
 	"github.com/a41-official/peekd/repository"
 	"github.com/a41-official/peekd/reqresp"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -31,7 +32,12 @@ type WatcherOption struct {
 	portTCP                  int
 	ethNetwork               string
 	estimateActiveValidators uint64
-	repo                     repository.Repository
+	dbType                   string
+	dbName                   string
+	dbHost                   string
+	dbPort                   int
+	dbUser                   string
+	dbPassword               string
 }
 
 type WatcherOptionFunc func(*WatcherOption)
@@ -72,9 +78,39 @@ func WithEstimateActiveValidators(estimateActiveValidators uint64) WatcherOption
 	}
 }
 
-func WithRepository(repo repository.Repository) WatcherOptionFunc {
+func WithDBType(dbType string) WatcherOptionFunc {
 	return func(o *WatcherOption) {
-		o.repo = repo
+		o.dbType = dbType
+	}
+}
+
+func WithDBName(dbName string) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.dbName = dbName
+	}
+}
+
+func WithDBHost(dbHost string) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.dbHost = dbHost
+	}
+}
+
+func WithDBPort(dbPort int) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.dbPort = dbPort
+	}
+}
+
+func WithDBUser(dbUser string) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.dbUser = dbUser
+	}
+}
+
+func WithDBPassword(dbPassword string) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.dbPassword = dbPassword
 	}
 }
 
@@ -96,6 +132,23 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		opt(o)
 	}
 
+	// initialize repository
+	repo, err := repository.NewRepository(
+		repository.WithDBType(o.dbType),
+		repository.WithDBName(o.dbName),
+		repository.WithDBHost(o.dbHost),
+		repository.WithDBPort(o.dbPort),
+		repository.WithDBUser(o.dbUser),
+		repository.WithDBPassword(o.dbPassword),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize repository")
+	}
+
+	// initialize message processor
+	messageProcessor := processor.NewBeaconMessageProcessor(repo)
+
+	// initialize p2p
 	ecdsaKey, secpKey, err := retrievePrivateKeys(o.ecdsaPrivateKeyHex)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve private keys")
@@ -137,6 +190,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		gossip.WithEstimateActiveValidators(o.estimateActiveValidators),
 		gossip.WithSupervisor(supervisor),
 		gossip.WithHost(localHost),
+		gossip.WithMessageProcessor(messageProcessor),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create gossipSub")
@@ -158,7 +212,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 
 	return &Watcher{
 		supervisor: supervisor,
-		repo:       o.repo,
+		repo:       repo,
 	}, nil
 }
 

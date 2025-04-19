@@ -3,24 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/a41-official/peekd/repository/clickhouse"
 )
-
-// MessageStats represents message statistics as stored in the database
-type MessageStats struct {
-	Slot             uint64    // Beacon slot number (6-second interval)
-	Topic            string    // e.g., block, attestation, blob
-	NodeRegion       string    // e.g., "CENTRAL_EUROPE", "NORTH_AMERICA", "EAST_ASIA", etc.
-	MessageID        string    // Unique message identifier
-	SlotStartTime    time.Time // Corresponding timestamp for slot
-	FirstArrivalTime time.Time // When message was first seen
-	LatencyMS        uint32    // Arrival delay from slot start
-	SizeBytes        uint32    // Message size in bytes
-	SeenCount        uint32    // How many times the message was received in this slot
-	NodeID           string    // ID of the watcher node
-}
 
 // Repository defines the interface for data storage operations
 type Repository interface {
@@ -38,34 +23,94 @@ type Repository interface {
 type RepositoryType string
 
 const (
-	// RepositoryTypeClickHouse indicates using ClickHouse as the storage backend
 	RepositoryTypeClickHouse RepositoryType = "clickhouse"
 	// Additional repository types can be added here in the future
 )
-
-// Config holds configuration options for the repository
-type Config struct {
-	Type       RepositoryType
-	ClickHouse clickhouse.Config
-	// Future database configs can be added here
-}
 
 // adapter is a wrapper that adapts different database implementations to the Repository interface
 type adapter struct {
 	chRepo *clickhouse.ClickHouseRepository
 }
 
+type RepositoryOption struct {
+	dbType     string
+	dbName     string
+	dbHost     string
+	dbPort     int
+	dbUser     string
+	dbPassword string
+}
+
+type RepositoryOptionFunc func(*RepositoryOption)
+
+func WithDBType(dbType string) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbType = dbType
+	}
+}
+
+func WithDBName(dbName string) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbName = dbName
+	}
+}
+
+func WithDBHost(dbHost string) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbHost = dbHost
+	}
+}
+
+func WithDBPort(dbPort int) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbPort = dbPort
+	}
+}
+
+func WithDBUser(dbUser string) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbUser = dbUser
+	}
+}
+
+func WithDBPassword(dbPassword string) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbPassword = dbPassword
+	}
+}
+
 // NewRepository creates a new repository based on the provided configuration
-func NewRepository(cfg Config) (Repository, error) {
-	switch cfg.Type {
-	case RepositoryTypeClickHouse:
-		chRepo, err := clickhouse.NewClickHouseRepository(cfg.ClickHouse)
+func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
+	o := &RepositoryOption{
+		dbType:     "clickhouse",
+		dbName:     "peekd",
+		dbHost:     "localhost",
+		dbPort:     9000,
+		dbUser:     "default",
+		dbPassword: "",
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	switch o.dbType {
+	case "clickhouse":
+		chConfig := clickhouse.Config{
+			Host:     o.dbHost,
+			Port:     uint16(o.dbPort),
+			Database: o.dbName,
+			Username: o.dbUser,
+			Password: o.dbPassword,
+		}
+
+		chRepo, err := clickhouse.NewClickHouseRepository(chConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ClickHouse repository: %w", err)
 		}
 		return &adapter{chRepo: chRepo}, nil
 	default:
-		return nil, fmt.Errorf("unsupported repository type: %s", cfg.Type)
+		return nil, fmt.Errorf("unsupported database type: %s", o.dbType)
 	}
 }
 
