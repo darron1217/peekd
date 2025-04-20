@@ -39,6 +39,8 @@ func (gs *GossipSub) mappingTopicToHandler(topic string) TopicHandler {
 	case strings.Contains(topic, p2p.GossipExitMessage):
 		return gs.voluntaryExitHandler
 	default:
+		slog.With("topic", topic).
+			Warn("Noop gossip handler is set to unknown topic")
 		return gs.noopHandler
 	}
 }

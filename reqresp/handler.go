@@ -26,6 +26,8 @@ func mappingTopicToHandler(topic string) network.StreamHandler {
 	case p2p.RPCStatusTopicV1:
 		return InboundStatusHandler()
 	default:
+		slog.With("topic", topic).
+			Warn("Noop handler is set to unknown reqresp topic")
 		return noopHandler()
 	}
 }
@@ -41,7 +43,7 @@ func InboundPingHandler() network.StreamHandler {
 		req := primitives.SSZUint64(0)
 		if err := readRequest(stream, &req); err != nil {
 			slog.With("protocol", stream.Protocol()).
-				With("err", err).
+				With("error", err).
 				Debug("failed to read ping request on stream")
 			return
 		}
@@ -49,7 +51,7 @@ func InboundPingHandler() network.StreamHandler {
 		seqNum := primitives.SSZUint64(0)
 		if err := writeResponse(stream, &seqNum); err != nil {
 			slog.With("protocol", stream.Protocol()).
-				With("err", err).
+				With("error", err).
 				Debug("failed to write ping response on stream")
 			return
 		}
@@ -63,7 +65,7 @@ func InboundGoodbyeHandler() network.StreamHandler {
 		req := primitives.SSZUint64(0)
 		if err := readRequest(stream, &req); err != nil {
 			slog.With("protocol", stream.Protocol()).
-				With("err", err).
+				With("error", err).
 				Debug("failed to read goodbye request on stream")
 			return
 		}
@@ -93,7 +95,7 @@ func InboundMetadataHandler() network.StreamHandler {
 
 		if err := writeResponse(stream, metadata); err != nil {
 			slog.With("protocol", stream.Protocol()).
-				With("err", err).
+				With("error", err).
 				Debug("failed to write metadata response")
 			return
 		}
@@ -107,14 +109,14 @@ func InboundStatusHandler() network.StreamHandler {
 		status := &ethtypes.Status{}
 		if err := readRequest(stream, status); err != nil {
 			slog.With("protocol", stream.Protocol()).
-				With("err", err).
+				With("error", err).
 				Debug("failed to read status request on stream")
 			return
 		}
 
 		if err := writeResponse(stream, status); err != nil {
 			slog.With("protocol", stream.Protocol()).
-				With("err", err).
+				With("error", err).
 				Debug("failed to write status response on stream")
 			return
 		}

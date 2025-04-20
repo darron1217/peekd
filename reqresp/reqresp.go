@@ -49,6 +49,8 @@ func NewReqResp(opts ...ReqRespOptionFunc) (*ReqResp, error) {
 		return nil, errors.New("host must be configured when creating reqresp")
 	}
 
+	slog.Info("successfully created reqresp")
+
 	return &ReqResp{
 		host: o.host,
 	}, nil

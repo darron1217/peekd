@@ -26,6 +26,8 @@ type BeaconMessageProcessor struct {
 }
 
 func NewBeaconMessageProcessor(repo repository.Repository) *BeaconMessageProcessor {
+	slog.Info("successfully created beacon message processor")
+	
 	return &BeaconMessageProcessor{
 		repo:         repo,
 		enc:          encoder.SszNetworkEncoder{},
@@ -157,7 +159,7 @@ func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
 	metadata *GeneralMessageMetadata,
 ) error {
 
-	slog.Info("processing general message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize)
+	slog.Debug("processing general message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize)
 
 	// TODO: process metadata
 
@@ -168,7 +170,7 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 	metadata *SlotMessageMetadata,
 ) error {
 
-	slog.Info("processing slot message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize, "msg_delay_in_slot", metadata.MsgDelayInSlot, "slot", metadata.Slot)
+	slog.Debug("processing slot message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize, "msg_delay_in_slot", metadata.MsgDelayInSlot, "slot", metadata.Slot)
 
 	// TODO: process metadata
 

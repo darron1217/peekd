@@ -136,10 +136,10 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 		bootstrapNodes = append(bootstrapNodes, bootstrapNode)
 	}
 
-	slog.With("local node id", localNode.ID().String()).
-		With("local node ip", localNode.Node().IP().String()).
-		With("local node udp port", localNode.Node().UDP()).
-		With("local node tcp port", localNode.Node().TCP()).
+	slog.With("local_node_id", localNode.ID().String()).
+		With("local_node_ip", localNode.Node().IP().String()).
+		With("local_node_udp_port", localNode.Node().UDP()).
+		With("local_node_tcp_port", localNode.Node().TCP()).
 		Info("successfully created discovery")
 
 	return &Discovery{

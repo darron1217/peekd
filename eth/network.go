@@ -8,6 +8,7 @@ import (
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/prysmaticlabs/prysm/v5/consensus-types/primitives"
 	"github.com/prysmaticlabs/prysm/v5/time/slots"
+	"log/slog"
 	"time"
 )
 
@@ -20,7 +21,7 @@ func GetNetwork() string {
 	case params.MainnetName, params.HoodiName:
 		return network
 	default:
-		panic(errors.New("network must be configured only for supported ethereum"))
+		panic(errors.New("failed to get ethereum network"))
 	}
 }
 
@@ -28,10 +29,14 @@ func SetNetwork(net string) error {
 	switch net {
 	case params.MainnetName, params.HoodiName:
 		network = net
-		return nil
 	default:
-		return errors.New("network must be configured only for supported ethereum")
+		return errors.New("network must be set only for supported ethereum")
 	}
+
+	slog.With("network", network).
+		Info("successfully set ethereum network")
+
+	return nil
 }
 
 type GenesisConfig struct {

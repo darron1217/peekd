@@ -157,6 +157,9 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 		o.topics = allTopics
 	}
 
+	slog.With("topics", o.topics).
+		Info("successfully created gossipSub")
+
 	return &GossipSub{
 		supervisor:       o.supervisor,
 		host:             o.host,

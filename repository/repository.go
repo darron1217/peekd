@@ -2,7 +2,8 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"github.com/pkg/errors"
+	"log/slog"
 
 	"github.com/a41-official/peekd/repository/clickhouse"
 )
@@ -106,11 +107,15 @@ func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 
 		chRepo, err := clickhouse.NewClickHouseRepository(chConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create ClickHouse repository: %w", err)
+			return nil, errors.Wrap(err, "failed to create ClickHouse repository")
 		}
+
+		slog.With("db_name", o.dbName).
+			Info("successfully created clickhouse repository")
+
 		return &adapter{chRepo: chRepo}, nil
 	default:
-		return nil, fmt.Errorf("unsupported database type: %s", o.dbType)
+		return nil, errors.Errorf("unsupported database type: %s", o.dbType)
 	}
 }
 

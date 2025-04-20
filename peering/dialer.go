@@ -25,6 +25,8 @@ func NewDialer(host *host.Host, discovers <-chan *peer.AddrInfo) (*Dialer, error
 		return nil, errors.New("discovers channel should be configured when creating dialer")
 	}
 
+	slog.Info("successfully created dialer")
+
 	return &Dialer{
 		host:      host,
 		discovers: discovers,
@@ -58,7 +60,7 @@ func (d *Dialer) Serve(ctx context.Context) error {
 		err := d.host.Connect(timeoutCtx, *addrInfo)
 		cancel()
 		if err != nil {
-			slog.With("peer id", addrInfo.ID).
+			slog.With("peer_id", addrInfo.ID).
 				Debug("failed to connect with peer")
 			continue
 		}
