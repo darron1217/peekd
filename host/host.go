@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/pkg/errors"
 	"log/slog"
+	"time"
 )
 
 type HostOption struct {
@@ -136,12 +137,11 @@ func (h *Host) Serve(ctx context.Context) error {
 	defer slog.Info("stopping host service")
 
 	notifiee := &network.NotifyBundle{
-		ListenF:       listenNotifiee,
-		ListenCloseF:  listenCloseNotifiee,
-		ConnectedF:    connectedNotifiee,
-		DisconnectedF: disconnectedNotifiee,
+		ListenF:       listenFunc,
+		ListenCloseF:  listenCloseFunc,
+		ConnectedF:    connectedFunc,
+		DisconnectedF: disconnectedFunc,
 	}
-
 	h.Network().Notify(notifiee)
 	defer h.Network().StopNotify(notifiee)
 
@@ -149,7 +149,36 @@ func (h *Host) Serve(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to start libp2p network")
 	}
-	<-ctx.Done()
 
-	return nil
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if h.Network() == nil {
+					continue
+				}
+
+				in, out := 0, 0
+				for _, conn := range h.Network().Conns() {
+					if conn.Stat().Direction == network.DirInbound {
+						in += 1
+					}
+					if conn.Stat().Direction == network.DirOutbound {
+						out += 1
+					}
+				}
+
+				slog.With("inbound_peers", in).
+					With("outbound_peers", out).
+					Info("connected peers status")
+			}
+		}
+	}()
+
+	<-ctx.Done()
+	return ctx.Err()
 }
