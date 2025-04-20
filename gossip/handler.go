@@ -78,9 +78,8 @@ func (gs *GossipSub) blobSidecarHandler(ctx context.Context, msg *pubsub.Message
 
 	var blob ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		blob = &ethtypes.BlobSidecar{}
 	default:
 		return errors.New("unknown fork version for handling blob")
@@ -97,15 +96,11 @@ func (gs *GossipSub) beaconAggregateAndProofHandler(ctx context.Context, msg *pu
 
 	var aggProof ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
 		aggProof = &ethtypes.SignedAggregateAttestationAndProof{}
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		aggProof = &ethtypes.SignedAggregateAttestationAndProofElectra{}
@@ -124,15 +119,11 @@ func (gs *GossipSub) beaconAttestationHandler(ctx context.Context, msg *pubsub.M
 
 	var att ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
 		att = &ethtypes.Attestation{}
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		att = &ethtypes.SingleAttestation{}
@@ -151,17 +142,12 @@ func (gs *GossipSub) syncCommitteeContributionAndProofHandler(ctx context.Contex
 
 	var ctrProof ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		ctrProof = &ethtypes.SignedContributionAndProof{}
 	default:
 		return errors.New("unknown fork version for handling contribution proof")
@@ -178,17 +164,12 @@ func (gs *GossipSub) syncCommitteeHandler(ctx context.Context, msg *pubsub.Messa
 
 	var sync ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		sync = &ethtypes.SyncCommitteeMessage{}
 	default:
 		return errors.New("unknown fork version for handling sync committee")
@@ -205,17 +186,12 @@ func (gs *GossipSub) proposerSlashingHandler(ctx context.Context, msg *pubsub.Me
 
 	var pSlash ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		pSlash = &ethtypes.ProposerSlashing{}
 	default:
 		return errors.New("unknown fork version for handling proposer slashing")
@@ -232,17 +208,12 @@ func (gs *GossipSub) attesterSlashingHandler(ctx context.Context, msg *pubsub.Me
 
 	var aSlash ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		aSlash = &ethtypes.AttesterSlashing{}
 	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		aSlash = &ethtypes.AttesterSlashingElectra{}
@@ -261,17 +232,12 @@ func (gs *GossipSub) blsToExecutionChangeHandler(ctx context.Context, msg *pubsu
 
 	var blsExec ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		blsExec = &ethtypes.BLSToExecutionChange{}
 	default:
 		return errors.New("unknown fork version for handling bls execution change")
@@ -288,17 +254,12 @@ func (gs *GossipSub) voluntaryExitHandler(ctx context.Context, msg *pubsub.Messa
 
 	var exit ssz.Unmarshaler
 	switch {
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion):
-		fallthrough
-	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
+	case bytes.Equal(gs.forkVersion[:], gs.beaconConfig.GenesisForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.AltairForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.BellatrixForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.CapellaForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.DenebForkVersion),
+		bytes.Equal(gs.forkVersion[:], gs.beaconConfig.ElectraForkVersion):
 		exit = &ethtypes.VoluntaryExit{}
 	default:
 		return errors.New("unknown fork version for handling voluntary exit")
