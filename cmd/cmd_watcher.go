@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
-
 	"github.com/a41-official/peekd/watcher"
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/urfave/cli/v3"
+	"log/slog"
+	"os"
+	"strings"
 )
 
 const (
-	CmdWatcher                   = "watcher"
+	CmdWatcher = "watcher"
+
+	FlagLogLevel                 = "log-level"
 	FlagEcdsaPrivateKeyHex       = "ecdsa-private-key-hex"
 	FlagIp                       = "ip"
 	FlagUDPPort                  = "udp-port"
@@ -34,6 +37,11 @@ var cmdWatcher = &cli.Command{
 	Usage:  "watching to ethereum p2p network",
 	Action: launchWatcher,
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    FlagLogLevel,
+			Usage:   "Log level",
+			Sources: cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "LOG_LEVEL")),
+		},
 		&cli.StringFlag{
 			Name:    FlagEcdsaPrivateKeyHex,
 			Usage:   "ECDSA Private Key Hex",
@@ -110,10 +118,27 @@ var cmdWatcher = &cli.Command{
 }
 
 func launchWatcher(ctx context.Context, cmd *cli.Command) error {
-	slog.Info("starting watcher")
-	defer slog.Info("stopping watcher")
-
 	opts := make([]watcher.WatcherOptionFunc, 0)
+	if cmd.IsSet(FlagLogLevel) {
+		logLvl := new(slog.LevelVar)
+		switch strings.ToLower(cmd.String(FlagLogLevel)) {
+		case "debug":
+			logLvl.Set(slog.LevelDebug)
+		case "info":
+			logLvl.Set(slog.LevelInfo)
+		case "warn":
+			logLvl.Set(slog.LevelWarn)
+		case "error":
+			logLvl.Set(slog.LevelError)
+		default:
+			logLvl.Set(slog.LevelInfo)
+		}
+
+		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: logLvl,
+		}))
+		slog.SetDefault(logger)
+	}
 	if cmd.IsSet(FlagEcdsaPrivateKeyHex) {
 		opts = append(opts, watcher.WithECDSAPrivateKeyHex(cmd.String(FlagEcdsaPrivateKeyHex)))
 	}
@@ -150,6 +175,9 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	if cmd.IsSet(FlagDbPassword) {
 		opts = append(opts, watcher.WithDBPassword(cmd.String(FlagDbPassword)))
 	}
+
+	slog.Info("starting watcher")
+	defer slog.Info("stopping watcher")
 
 	w, err := watcher.NewWatcher(opts...)
 	if err != nil {
