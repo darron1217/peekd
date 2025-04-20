@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/a41-official/peekd/eth"
 
 	"github.com/a41-official/peekd/gossip"
 	"github.com/a41-official/peekd/host"
@@ -132,6 +133,10 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		opt(o)
 	}
 
+	if err := eth.SetNetwork(o.ethNetwork); err != nil {
+		return nil, errors.Wrap(err, "failed to set eth network")
+	}
+
 	// initialize repository
 	repo, err := repository.NewRepository(
 		repository.WithDBType(o.dbType),
@@ -146,7 +151,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	}
 
 	// initialize message processor
-	messageProcessor := processor.NewBeaconMessageProcessor(o.ethNetwork, repo)
+	messageProcessor := processor.NewBeaconMessageProcessor(repo)
 
 	// initialize p2p
 	ecdsaKey, secpKey, err := retrievePrivateKeys(o.ecdsaPrivateKeyHex)
@@ -171,7 +176,6 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		peering.WithIP(o.ip),
 		peering.WithPortUDP(o.portUDP),
 		peering.WithPortTCP(o.portTCP),
-		peering.WithEthNetwork(o.ethNetwork),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create discovery")
@@ -186,7 +190,6 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	}
 
 	gossipSub, err := gossip.NewGossipSub(
-		gossip.WithEthNetwork(o.ethNetwork),
 		gossip.WithEstimateActiveValidators(o.estimateActiveValidators),
 		gossip.WithSupervisor(supervisor),
 		gossip.WithHost(localHost),
@@ -198,7 +201,6 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 
 	reqResp, err := reqresp.NewReqResp(
 		reqresp.WithHost(localHost),
-		reqresp.WithEthNetwork(o.ethNetwork),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create reqresp")

@@ -36,7 +36,6 @@ type GossipSubOption struct {
 	host       *host.Host
 
 	topics                   []string
-	ethNetwork               string
 	estimateActiveValidators uint64
 
 	peerScoreInspectFunc   pubsub.ExtendedPeerScoreInspectFn
@@ -46,12 +45,6 @@ type GossipSubOption struct {
 }
 
 type GossipSubOptionFunc func(*GossipSubOption)
-
-func WithEthNetwork(ethNetwork string) GossipSubOptionFunc {
-	return func(o *GossipSubOption) {
-		o.ethNetwork = ethNetwork
-	}
-}
 
 func WithEstimateActiveValidators(estimateActiveValidators uint64) GossipSubOptionFunc {
 	return func(o *GossipSubOption) {
@@ -99,7 +92,6 @@ type GossipSub struct {
 	supervisor       *suture.Supervisor
 	host             *host.Host
 	peerScore        *peerScore
-	ethNetwork       string
 	topics           []string
 	forkVersion      [4]byte
 	beaconConfig     *params.BeaconChainConfig
@@ -108,7 +100,6 @@ type GossipSub struct {
 
 func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	o := &GossipSubOption{
-		ethNetwork:               params.MainnetName,
 		estimateActiveValidators: 0,
 		topics:                   make([]string, 0),
 		peerScoreInspectFunc:     noopPeerScoreInspectFunc,
@@ -129,7 +120,7 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	}
 
 	if len(o.topics) == 0 {
-		genesisConfig := eth.GetGenesisConfig(o.ethNetwork)
+		genesisConfig := eth.GetGenesisConfig()
 		forkDigest, err := forks.CreateForkDigest(genesisConfig.GenesisTime, genesisConfig.GenesisValidatorRoot)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create fork digest")
@@ -153,7 +144,7 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 
 		allTopics := make([]string, 0)
 		for _, rawTopic := range rawAllTopics {
-			subnetCnt, hasSubnet := eth.HasSubnets(o.ethNetwork, rawTopic)
+			subnetCnt, hasSubnet := eth.HasSubnets(rawTopic)
 			if hasSubnet {
 				for i := uint64(0); i < subnetCnt; i++ {
 					allTopics = append(allTopics, fmt.Sprintf(rawTopic, forkDigest, i)+"/"+encoder.ProtocolSuffixSSZSnappy)
@@ -169,11 +160,10 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	return &GossipSub{
 		supervisor:       o.supervisor,
 		host:             o.host,
-		peerScore:        newPeerScore(o.ethNetwork, o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
-		ethNetwork:       o.ethNetwork,
+		peerScore:        newPeerScore(o.estimateActiveValidators, o.topics, o.peerScoreInspectPeriod),
 		topics:           o.topics,
-		forkVersion:      eth.GetCurrentForkVersion(o.ethNetwork),
-		beaconConfig:     eth.GetBeaconChainConfig(o.ethNetwork),
+		forkVersion:      eth.GetCurrentForkVersion(),
+		beaconConfig:     eth.GetBeaconChainConfig(),
 		messageProcessor: o.messageProcessor,
 	}, nil
 }
@@ -210,9 +200,9 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 			return errors.Wrapf(err, "failed to subscribe topic %s", topicName)
 		}
 
-		topicHandler := gs.mappingTopicToHandler(gs.ethNetwork, topicName)
+		topicHandler := gs.mappingTopicToHandler(topicName)
 
-		gs.supervisor.Add(newSubscription(gs.ethNetwork, gs.host.ID(), subscription, topicHandler))
+		gs.supervisor.Add(newSubscription(gs.host.ID(), subscription, topicHandler))
 	}
 
 	<-ctx.Done()
@@ -231,6 +221,6 @@ func (gs *GossipSub) gossipSubParams() pubsub.GossipSubParams {
 }
 
 func (gs *GossipSub) maxMessageSize() int {
-	maxCompressedLen := encoder.MaxCompressedLen(eth.GetBeaconChainConfig(gs.ethNetwork).MaxPayloadSize)
+	maxCompressedLen := encoder.MaxCompressedLen(eth.GetBeaconChainConfig().MaxPayloadSize)
 	return int(math.Max(maxCompressedLen+1024, 1024*1024))
 }

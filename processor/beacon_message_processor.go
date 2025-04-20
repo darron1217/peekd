@@ -25,12 +25,12 @@ type BeaconMessageProcessor struct {
 	genesisTime  time.Time
 }
 
-func NewBeaconMessageProcessor(ethNetwork string, repo repository.Repository) *BeaconMessageProcessor {
+func NewBeaconMessageProcessor(repo repository.Repository) *BeaconMessageProcessor {
 	return &BeaconMessageProcessor{
 		repo:         repo,
 		enc:          encoder.SszNetworkEncoder{},
-		beaconConfig: eth.GetBeaconChainConfig(ethNetwork),
-		genesisTime:  eth.GetGenesisConfig(ethNetwork).GenesisTime,
+		beaconConfig: eth.GetBeaconChainConfig(),
+		genesisTime:  eth.GetGenesisConfig().GenesisTime,
 	}
 }
 

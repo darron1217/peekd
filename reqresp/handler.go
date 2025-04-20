@@ -15,14 +15,14 @@ import (
 	"time"
 )
 
-func mappingTopicToHandler(ethNetwork, topic string) network.StreamHandler {
+func mappingTopicToHandler(topic string) network.StreamHandler {
 	switch topic {
 	case p2p.RPCPingTopicV1:
 		return InboundPingHandler()
 	case p2p.RPCGoodByeTopicV1:
 		return InboundGoodbyeHandler()
 	case p2p.RPCMetaDataTopicV1, p2p.RPCMetaDataTopicV2:
-		return InboundMetadataHandler(ethNetwork)
+		return InboundMetadataHandler()
 	case p2p.RPCStatusTopicV1:
 		return InboundStatusHandler()
 	default:
@@ -81,11 +81,11 @@ func InboundGoodbyeHandler() network.StreamHandler {
 	}
 }
 
-func InboundMetadataHandler(ethNetwork string) network.StreamHandler {
+func InboundMetadataHandler() network.StreamHandler {
 	metadata := wrapper.WrappedMetadataV1(
 		&ethtypes.MetaDataV1{
-			Attnets:  eth.GetAttestationAllSubnetBitvector(ethNetwork),
-			Syncnets: eth.GetSyncCommitteeAllSubnetBitvector(ethNetwork),
+			Attnets:  eth.GetAttestationAllSubnetBitvector(),
+			Syncnets: eth.GetSyncCommitteeAllSubnetBitvector(),
 		})
 
 	return func(stream network.Stream) {

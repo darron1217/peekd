@@ -14,7 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/prysmaticlabs/prysm/v5/network/forks"
 	pb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/time/slots"
@@ -29,8 +28,6 @@ type DiscoveryOption struct {
 	ip      string
 	portUDP int
 	portTCP int
-
-	ethNetwork string
 }
 
 type DiscoveryOptionFunc func(*DiscoveryOption)
@@ -59,12 +56,6 @@ func WithPortTCP(port int) DiscoveryOptionFunc {
 	}
 }
 
-func WithEthNetwork(ethNetwork string) DiscoveryOptionFunc {
-	return func(o *DiscoveryOption) {
-		o.ethNetwork = ethNetwork
-	}
-}
-
 type Discovery struct {
 	privateKey *ecdsa.PrivateKey
 	node       *enode.LocalNode
@@ -80,7 +71,6 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 		ip:         "127.0.0.1",
 		portUDP:    8080,
 		portTCP:    8080,
-		ethNetwork: params.MainnetName,
 	}
 
 	for _, opt := range opts {
@@ -100,11 +90,11 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 		return nil, errors.Wrap(err, "failed to open peer's database")
 	}
 
-	attestBitV := eth.GetAttestationAllSubnetBitvector(o.ethNetwork)
-	syncBitV := eth.GetSyncCommitteeAllSubnetBitvector(o.ethNetwork)
+	attestBitV := eth.GetAttestationAllSubnetBitvector()
+	syncBitV := eth.GetSyncCommitteeAllSubnetBitvector()
 
-	genesisConfig := eth.GetGenesisConfig(o.ethNetwork)
-	networkConfig := eth.GetBeaconNetworkConfig(o.ethNetwork)
+	genesisConfig := eth.GetGenesisConfig()
+	networkConfig := eth.GetBeaconNetworkConfig()
 
 	ip := net.ParseIP(o.ip)
 

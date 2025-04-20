@@ -41,15 +41,13 @@ func noopPeerScoreInspectFunc(_ map[peer.ID]*pubsub.PeerScoreSnapshot) {
 }
 
 type peerScore struct {
-	ethNetwork               string
 	estimateActiveValidators uint64
 	topics                   []string
 	inspectPeriod            time.Duration
 }
 
-func newPeerScore(ethNetwork string, estimateActiveValidators uint64, topics []string, inspectPeriod time.Duration) *peerScore {
+func newPeerScore(estimateActiveValidators uint64, topics []string, inspectPeriod time.Duration) *peerScore {
 	return &peerScore{
-		ethNetwork:               ethNetwork,
 		estimateActiveValidators: estimateActiveValidators,
 		topics:                   topics,
 		inspectPeriod:            inspectPeriod,
@@ -100,10 +98,10 @@ func (ps *peerScore) params() (*pubsub.PeerScoreParams, *pubsub.PeerScoreThresho
 		IPColocationFactorWhitelist: nil,
 		BehaviourPenaltyWeight:      -15.92,
 		BehaviourPenaltyThreshold:   6,
-		BehaviourPenaltyDecay:       ps.scoreDecay(10 * eth.GetEpochDuration(ps.ethNetwork)),
-		DecayInterval:               eth.GetEpochDuration(ps.ethNetwork),
+		BehaviourPenaltyDecay:       ps.scoreDecay(10 * eth.GetEpochDuration()),
+		DecayInterval:               eth.GetEpochDuration(),
 		DecayToZero:                 decayToZero,
-		RetainScore:                 100 * eth.GetEpochDuration(ps.ethNetwork),
+		RetainScore:                 100 * eth.GetEpochDuration(),
 	}
 
 	thresholds := &pubsub.PeerScoreThresholds{
@@ -119,8 +117,8 @@ func (ps *peerScore) params() (*pubsub.PeerScoreParams, *pubsub.PeerScoreThresho
 
 func (ps *peerScore) defaultTopicParams() *pubsub.TopicScoreParams {
 	decayEpoch := uint64(5)
-	twentyEpochDuration := 20 * eth.GetEpochDuration(ps.ethNetwork)
-	blocksPerEpoch := uint64(eth.GetBeaconChainConfig(ps.ethNetwork).SlotsPerEpoch)
+	twentyEpochDuration := 20 * eth.GetEpochDuration()
+	blocksPerEpoch := uint64(eth.GetBeaconChainConfig().SlotsPerEpoch)
 	meshWeight := -0.717
 	return &pubsub.TopicScoreParams{
 		TopicWeight:                     blockWeight,
@@ -131,33 +129,33 @@ func (ps *peerScore) defaultTopicParams() *pubsub.TopicScoreParams {
 		FirstMessageDeliveriesDecay:     ps.scoreDecay(twentyEpochDuration),
 		FirstMessageDeliveriesCap:       23,
 		MeshMessageDeliveriesWeight:     meshWeight,
-		MeshMessageDeliveriesDecay:      ps.scoreDecay(time.Duration(decayEpoch) * eth.GetEpochDuration(ps.ethNetwork)),
+		MeshMessageDeliveriesDecay:      ps.scoreDecay(time.Duration(decayEpoch) * eth.GetEpochDuration()),
 		MeshMessageDeliveriesCap:        float64(blocksPerEpoch * decayEpoch),
 		MeshMessageDeliveriesThreshold:  float64(blocksPerEpoch*decayEpoch) / 10,
 		MeshMessageDeliveriesWindow:     2 * time.Second,
-		MeshMessageDeliveriesActivation: 4 * eth.GetEpochDuration(ps.ethNetwork),
+		MeshMessageDeliveriesActivation: 4 * eth.GetEpochDuration(),
 		MeshFailurePenaltyWeight:        meshWeight,
-		MeshFailurePenaltyDecay:         ps.scoreDecay(time.Duration(decayEpoch) * eth.GetEpochDuration(ps.ethNetwork)),
+		MeshFailurePenaltyDecay:         ps.scoreDecay(time.Duration(decayEpoch) * eth.GetEpochDuration()),
 		InvalidMessageDeliveriesWeight:  -140.4475,
 		InvalidMessageDeliveriesDecay:   ps.scoreDecay(ps.invalidDecayPeriod()),
 	}
 }
 
 func (ps *peerScore) defaultAggregateTopicParams() *pubsub.TopicScoreParams {
-	comms := ps.estimateActiveValidators / uint64(eth.GetBeaconChainConfig(ps.ethNetwork).SlotsPerEpoch) / eth.GetBeaconChainConfig(ps.ethNetwork).TargetCommitteeSize
+	comms := ps.estimateActiveValidators / uint64(eth.GetBeaconChainConfig().SlotsPerEpoch) / eth.GetBeaconChainConfig().TargetCommitteeSize
 	switch {
-	case comms > eth.GetBeaconChainConfig(ps.ethNetwork).MaxCommitteesPerSlot:
-		comms = eth.GetBeaconChainConfig(ps.ethNetwork).MaxCommitteesPerSlot
+	case comms > eth.GetBeaconChainConfig().MaxCommitteesPerSlot:
+		comms = eth.GetBeaconChainConfig().MaxCommitteesPerSlot
 	case comms == 0:
 		comms = 1
 	default:
 	}
-	aggPerSlot := comms * eth.GetBeaconChainConfig(ps.ethNetwork).TargetAggregatorsPerCommittee
+	aggPerSlot := comms * eth.GetBeaconChainConfig().TargetAggregatorsPerCommittee
 
-	firstMsgCap := ps.decayLimit(ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)), float64(aggPerSlot*2/gossipSubD))
+	firstMsgCap := ps.decayLimit(ps.scoreDecay(eth.GetEpochDuration()), float64(aggPerSlot*2/gossipSubD))
 	firstMsgWeight := maxFirstDeliveryScore / firstMsgCap
 
-	meshThreshold := ps.decayThreshold(ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)), float64(aggPerSlot)/dampeningFactor)
+	meshThreshold := ps.decayThreshold(ps.scoreDecay(eth.GetEpochDuration()), float64(aggPerSlot)/dampeningFactor)
 	meshWeight := -ps.scoreByWeight(aggregateWeight, meshThreshold)
 	meshCap := 4 * meshThreshold
 
@@ -167,23 +165,23 @@ func (ps *peerScore) defaultAggregateTopicParams() *pubsub.TopicScoreParams {
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    firstMsgWeight,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       firstMsgCap,
 		MeshMessageDeliveriesWeight:     meshWeight,
-		MeshMessageDeliveriesDecay:      ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)),
+		MeshMessageDeliveriesDecay:      ps.scoreDecay(eth.GetEpochDuration()),
 		MeshMessageDeliveriesCap:        meshCap,
 		MeshMessageDeliveriesThreshold:  meshThreshold,
 		MeshMessageDeliveriesWindow:     2 * time.Second,
-		MeshMessageDeliveriesActivation: 1 * eth.GetEpochDuration(ps.ethNetwork),
+		MeshMessageDeliveriesActivation: 1 * eth.GetEpochDuration(),
 		MeshFailurePenaltyWeight:        meshWeight,
-		MeshFailurePenaltyDecay:         ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)),
+		MeshFailurePenaltyDecay:         ps.scoreDecay(eth.GetEpochDuration()),
 		InvalidMessageDeliveriesWeight:  -maxScore / aggregateWeight,
 		InvalidMessageDeliveriesDecay:   ps.scoreDecay(ps.invalidDecayPeriod()),
 	}
 }
 
 func (ps *peerScore) defaultAttestationTopicParams() *pubsub.TopicScoreParams {
-	subnetCnt := eth.GetBeaconChainConfig(ps.ethNetwork).AttestationSubnetCount
+	subnetCnt := eth.GetBeaconChainConfig().AttestationSubnetCount
 
 	topicWeight := attestationTotalWeight / float64(subnetCnt)
 	subnetWeight := ps.estimateActiveValidators / subnetCnt
@@ -191,15 +189,15 @@ func (ps *peerScore) defaultAttestationTopicParams() *pubsub.TopicScoreParams {
 		panic(errors.New("subnet weight cannot be 0"))
 	}
 
-	valsPerSlot := subnetWeight / uint64(eth.GetBeaconChainConfig(ps.ethNetwork).SlotsPerEpoch)
+	valsPerSlot := subnetWeight / uint64(eth.GetBeaconChainConfig().SlotsPerEpoch)
 	if valsPerSlot == 0 {
 		panic(errors.New("number of validators cannot be 0"))
 	}
 
-	comms := ps.estimateActiveValidators / uint64(eth.GetBeaconChainConfig(ps.ethNetwork).SlotsPerEpoch) / eth.GetBeaconChainConfig(ps.ethNetwork).TargetCommitteeSize
+	comms := ps.estimateActiveValidators / uint64(eth.GetBeaconChainConfig().SlotsPerEpoch) / eth.GetBeaconChainConfig().TargetCommitteeSize
 	switch {
-	case comms > eth.GetBeaconChainConfig(ps.ethNetwork).MaxCommitteesPerSlot:
-		comms = eth.GetBeaconChainConfig(ps.ethNetwork).MaxCommitteesPerSlot
+	case comms > eth.GetBeaconChainConfig().MaxCommitteesPerSlot:
+		comms = eth.GetBeaconChainConfig().MaxCommitteesPerSlot
 	case comms == 0:
 		comms = 1
 	default:
@@ -207,7 +205,7 @@ func (ps *peerScore) defaultAttestationTopicParams() *pubsub.TopicScoreParams {
 
 	firstDecay := time.Duration(1)
 	meshDecay := time.Duration(4)
-	if comms >= 2*subnetCnt/uint64(eth.GetBeaconChainConfig(ps.ethNetwork).SlotsPerEpoch) {
+	if comms >= 2*subnetCnt/uint64(eth.GetBeaconChainConfig().SlotsPerEpoch) {
 		firstDecay = 4
 		meshDecay = 16
 	}
@@ -217,10 +215,10 @@ func (ps *peerScore) defaultAttestationTopicParams() *pubsub.TopicScoreParams {
 		panic(errors.New("rate cannot be 0"))
 	}
 
-	firstMsgCap := ps.decayLimit(ps.scoreDecay(firstDecay*eth.GetEpochDuration(ps.ethNetwork)), float64(rate))
+	firstMsgCap := ps.decayLimit(ps.scoreDecay(firstDecay*eth.GetEpochDuration()), float64(rate))
 	firstMsgWeight := maxFirstDeliveryScore / firstMsgCap
 
-	meshThreshold := ps.decayThreshold(ps.scoreDecay(meshDecay*eth.GetEpochDuration(ps.ethNetwork)), float64(valsPerSlot/dampeningFactor))
+	meshThreshold := ps.decayThreshold(ps.scoreDecay(meshDecay*eth.GetEpochDuration()), float64(valsPerSlot/dampeningFactor))
 	meshWeight := -ps.scoreByWeight(topicWeight, meshThreshold)
 	meshCap := 4 * meshThreshold
 
@@ -230,27 +228,27 @@ func (ps *peerScore) defaultAttestationTopicParams() *pubsub.TopicScoreParams {
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    firstMsgWeight,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(firstDecay * eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(firstDecay * eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       firstMsgCap,
 		MeshMessageDeliveriesWeight:     meshWeight,
-		MeshMessageDeliveriesDecay:      ps.scoreDecay(meshDecay * eth.GetEpochDuration(ps.ethNetwork)),
+		MeshMessageDeliveriesDecay:      ps.scoreDecay(meshDecay * eth.GetEpochDuration()),
 		MeshMessageDeliveriesCap:        meshCap,
 		MeshMessageDeliveriesThreshold:  meshThreshold,
 		MeshMessageDeliveriesWindow:     2 * time.Second,
-		MeshMessageDeliveriesActivation: eth.GetEpochDuration(ps.ethNetwork),
+		MeshMessageDeliveriesActivation: eth.GetEpochDuration(),
 		MeshFailurePenaltyWeight:        meshWeight,
-		MeshFailurePenaltyDecay:         ps.scoreDecay(meshDecay * eth.GetEpochDuration(ps.ethNetwork)),
+		MeshFailurePenaltyDecay:         ps.scoreDecay(meshDecay * eth.GetEpochDuration()),
 		InvalidMessageDeliveriesWeight:  -maxScore / topicWeight,
 		InvalidMessageDeliveriesDecay:   ps.scoreDecay(ps.invalidDecayPeriod()),
 	}
 }
 
 func (ps *peerScore) defaultSyncContributionTopicParams() *pubsub.TopicScoreParams {
-	aggPerSlot := eth.GetBeaconChainConfig(ps.ethNetwork).SyncCommitteeSubnetCount * eth.GetBeaconChainConfig(ps.ethNetwork).TargetAggregatorsPerSyncSubcommittee
-	firstMsgCap := ps.decayLimit(ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)), float64(aggPerSlot*2/gossipSubD))
+	aggPerSlot := eth.GetBeaconChainConfig().SyncCommitteeSubnetCount * eth.GetBeaconChainConfig().TargetAggregatorsPerSyncSubcommittee
+	firstMsgCap := ps.decayLimit(ps.scoreDecay(eth.GetEpochDuration()), float64(aggPerSlot*2/gossipSubD))
 	firstMsgWeight := maxFirstDeliveryScore / firstMsgCap
 
-	meshThreshold := ps.decayThreshold(ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)), float64(aggPerSlot)/dampeningFactor)
+	meshThreshold := ps.decayThreshold(ps.scoreDecay(eth.GetEpochDuration()), float64(aggPerSlot)/dampeningFactor)
 	meshWeight := -ps.scoreByWeight(syncContributionWeight, meshThreshold)
 	meshCap := 4 * meshThreshold
 	return &pubsub.TopicScoreParams{
@@ -259,27 +257,27 @@ func (ps *peerScore) defaultSyncContributionTopicParams() *pubsub.TopicScorePara
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    firstMsgWeight,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       firstMsgCap,
 		MeshMessageDeliveriesWeight:     meshWeight,
-		MeshMessageDeliveriesDecay:      ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)),
+		MeshMessageDeliveriesDecay:      ps.scoreDecay(eth.GetEpochDuration()),
 		MeshMessageDeliveriesCap:        meshCap,
 		MeshMessageDeliveriesThreshold:  meshThreshold,
 		MeshMessageDeliveriesWindow:     2 * time.Second,
-		MeshMessageDeliveriesActivation: eth.GetEpochDuration(ps.ethNetwork),
+		MeshMessageDeliveriesActivation: eth.GetEpochDuration(),
 		MeshFailurePenaltyWeight:        meshWeight,
-		MeshFailurePenaltyDecay:         ps.scoreDecay(eth.GetEpochDuration(ps.ethNetwork)),
+		MeshFailurePenaltyDecay:         ps.scoreDecay(eth.GetEpochDuration()),
 		InvalidMessageDeliveriesWeight:  -maxScore / syncContributionWeight,
 		InvalidMessageDeliveriesDecay:   ps.scoreDecay(ps.invalidDecayPeriod()),
 	}
 }
 
 func (ps *peerScore) defaultSyncSubnetTopicParams() *pubsub.TopicScoreParams {
-	if ps.estimateActiveValidators > eth.GetBeaconChainConfig(ps.ethNetwork).SyncCommitteeSize {
-		ps.estimateActiveValidators = eth.GetBeaconChainConfig(ps.ethNetwork).SyncCommitteeSize
+	if ps.estimateActiveValidators > eth.GetBeaconChainConfig().SyncCommitteeSize {
+		ps.estimateActiveValidators = eth.GetBeaconChainConfig().SyncCommitteeSize
 	}
 
-	subnetCnt := eth.GetBeaconChainConfig(ps.ethNetwork).SyncCommitteeSubnetCount
+	subnetCnt := eth.GetBeaconChainConfig().SyncCommitteeSubnetCount
 
 	topicWeight := syncCommitteesTotalWeight / float64(subnetCnt)
 	subnetWeight := ps.estimateActiveValidators / subnetCnt
@@ -295,10 +293,10 @@ func (ps *peerScore) defaultSyncSubnetTopicParams() *pubsub.TopicScoreParams {
 		panic(errors.New("rate cannot be 0"))
 	}
 
-	firstMsgCap := ps.decayLimit(ps.scoreDecay(firstDecay*eth.GetEpochDuration(ps.ethNetwork)), float64(rate))
+	firstMsgCap := ps.decayLimit(ps.scoreDecay(firstDecay*eth.GetEpochDuration()), float64(rate))
 	firstMsgWeight := maxFirstDeliveryScore / firstMsgCap
 
-	meshThreshold := ps.decayThreshold(ps.scoreDecay(meshDecay*eth.GetEpochDuration(ps.ethNetwork)), float64(subnetWeight/dampeningFactor))
+	meshThreshold := ps.decayThreshold(ps.scoreDecay(meshDecay*eth.GetEpochDuration()), float64(subnetWeight/dampeningFactor))
 	meshWeight := -ps.scoreByWeight(topicWeight, meshThreshold)
 	meshCap := 4 * meshThreshold
 
@@ -308,16 +306,16 @@ func (ps *peerScore) defaultSyncSubnetTopicParams() *pubsub.TopicScoreParams {
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    firstMsgWeight,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(firstDecay * eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(firstDecay * eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       firstMsgCap,
 		MeshMessageDeliveriesWeight:     meshWeight,
-		MeshMessageDeliveriesDecay:      ps.scoreDecay(meshDecay * eth.GetEpochDuration(ps.ethNetwork)),
+		MeshMessageDeliveriesDecay:      ps.scoreDecay(meshDecay * eth.GetEpochDuration()),
 		MeshMessageDeliveriesCap:        meshCap,
 		MeshMessageDeliveriesThreshold:  meshThreshold,
 		MeshMessageDeliveriesWindow:     2 * time.Second,
-		MeshMessageDeliveriesActivation: eth.GetEpochDuration(ps.ethNetwork),
+		MeshMessageDeliveriesActivation: eth.GetEpochDuration(),
 		MeshFailurePenaltyWeight:        meshWeight,
-		MeshFailurePenaltyDecay:         ps.scoreDecay(meshDecay * eth.GetEpochDuration(ps.ethNetwork)),
+		MeshFailurePenaltyDecay:         ps.scoreDecay(meshDecay * eth.GetEpochDuration()),
 		InvalidMessageDeliveriesWeight:  -maxScore / topicWeight,
 		InvalidMessageDeliveriesDecay:   ps.scoreDecay(ps.invalidDecayPeriod()),
 	}
@@ -330,7 +328,7 @@ func (ps *peerScore) defaultProposerSlashingTopicParams() *pubsub.TopicScorePara
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    36,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       1,
 		MeshMessageDeliveriesWeight:     0,
 		MeshMessageDeliveriesDecay:      0,
@@ -352,7 +350,7 @@ func (ps *peerScore) defaultAttesterSlashingTopicParams() *pubsub.TopicScorePara
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    36,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       1,
 		MeshMessageDeliveriesWeight:     0,
 		MeshMessageDeliveriesDecay:      0,
@@ -374,7 +372,7 @@ func (ps *peerScore) defaultBlsToExecutionChangeTopicParams() *pubsub.TopicScore
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    2,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       5,
 		MeshMessageDeliveriesWeight:     0,
 		MeshMessageDeliveriesDecay:      0,
@@ -396,7 +394,7 @@ func (ps *peerScore) defaultVoluntaryExitTopicParams() *pubsub.TopicScoreParams 
 		TimeInMeshQuantum:               ps.inMeshUnitTime(),
 		TimeInMeshCap:                   ps.inMeshCapTime(),
 		FirstMessageDeliveriesWeight:    2,
-		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration(ps.ethNetwork)),
+		FirstMessageDeliveriesDecay:     ps.scoreDecay(100 * eth.GetEpochDuration()),
 		FirstMessageDeliveriesCap:       5,
 		MeshMessageDeliveriesWeight:     0,
 		MeshMessageDeliveriesDecay:      0,
@@ -412,7 +410,7 @@ func (ps *peerScore) defaultVoluntaryExitTopicParams() *pubsub.TopicScoreParams 
 }
 
 func (ps *peerScore) scoreDecay(totalDecay time.Duration) float64 {
-	cnt := totalDecay / eth.GetSlotDuration(ps.ethNetwork)
+	cnt := totalDecay / eth.GetSlotDuration()
 	return math.Pow(decayToZero, 1/float64(cnt))
 }
 
@@ -432,7 +430,7 @@ func (ps *peerScore) scoreByWeight(weight, threshold float64) float64 {
 }
 
 func (ps *peerScore) inMeshUnitTime() time.Duration {
-	return eth.GetSlotDuration(ps.ethNetwork)
+	return eth.GetSlotDuration()
 }
 
 func (ps *peerScore) inMeshCapTime() float64 {
@@ -440,5 +438,5 @@ func (ps *peerScore) inMeshCapTime() float64 {
 }
 
 func (ps *peerScore) invalidDecayPeriod() time.Duration {
-	return 50 * eth.GetEpochDuration(ps.ethNetwork)
+	return 50 * eth.GetEpochDuration()
 }

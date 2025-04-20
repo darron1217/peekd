@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
-	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"log/slog"
 	"time"
 )
@@ -22,8 +21,7 @@ var (
 )
 
 type ReqRespOption struct {
-	host       *host.Host
-	ethNetwork string
+	host *host.Host
 }
 
 type ReqRespOptionFunc func(*ReqRespOption)
@@ -34,21 +32,13 @@ func WithHost(host *host.Host) ReqRespOptionFunc {
 	}
 }
 
-func WithEthNetwork(ethNetwork string) ReqRespOptionFunc {
-	return func(o *ReqRespOption) {
-		o.ethNetwork = ethNetwork
-	}
-}
-
 type ReqResp struct {
-	host       *host.Host
-	ethNetwork string
+	host *host.Host
 }
 
 func NewReqResp(opts ...ReqRespOptionFunc) (*ReqResp, error) {
 	o := &ReqRespOption{
-		host:       nil,
-		ethNetwork: params.MainnetName,
+		host: nil,
 	}
 
 	for _, opt := range opts {
@@ -60,8 +50,7 @@ func NewReqResp(opts ...ReqRespOptionFunc) (*ReqResp, error) {
 	}
 
 	return &ReqResp{
-		host:       o.host,
-		ethNetwork: o.ethNetwork,
+		host: o.host,
 	}, nil
 }
 
@@ -77,7 +66,7 @@ func (rr *ReqResp) Serve(ctx context.Context) error {
 		p2p.RPCMetaDataTopicV2,
 	}
 	for _, topic := range topics {
-		rr.host.SetStreamHandler(protocolID(topic), mappingTopicToHandler(rr.ethNetwork, topic))
+		rr.host.SetStreamHandler(protocolID(topic), mappingTopicToHandler(topic))
 	}
 
 	<-ctx.Done()

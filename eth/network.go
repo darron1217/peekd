@@ -2,6 +2,7 @@ package eth
 
 import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
@@ -10,13 +11,36 @@ import (
 	"time"
 )
 
+var (
+	network string
+)
+
+func GetNetwork() string {
+	switch network {
+	case params.MainnetName, params.HoodiName:
+		return network
+	default:
+		panic(errors.New("network must be configured only for supported ethereum"))
+	}
+}
+
+func SetNetwork(net string) error {
+	switch net {
+	case params.MainnetName, params.HoodiName:
+		network = net
+		return nil
+	default:
+		return errors.New("network must be configured only for supported ethereum")
+	}
+}
+
 type GenesisConfig struct {
 	GenesisTime          time.Time
 	GenesisValidatorRoot []byte
 }
 
-func GetGenesisConfig(network string) *GenesisConfig {
-	switch network {
+func GetGenesisConfig() *GenesisConfig {
+	switch GetNetwork() {
 	case params.MainnetName:
 		return &GenesisConfig{
 			GenesisTime:          time.Unix(1606824023, 0),
@@ -35,8 +59,8 @@ func GetGenesisConfig(network string) *GenesisConfig {
 	}
 }
 
-func GetBeaconNetworkConfig(network string) *params.NetworkConfig {
-	switch network {
+func GetBeaconNetworkConfig() *params.NetworkConfig {
+	switch GetNetwork() {
 	case params.MainnetName:
 		return params.BeaconNetworkConfig()
 	case params.HoodiName:
@@ -47,8 +71,8 @@ func GetBeaconNetworkConfig(network string) *params.NetworkConfig {
 	}
 }
 
-func GetBeaconChainConfig(network string) *params.BeaconChainConfig {
-	switch network {
+func GetBeaconChainConfig() *params.BeaconChainConfig {
+	switch GetNetwork() {
 	case params.MainnetName:
 		return params.MainnetConfig()
 	case params.HoodiName:
@@ -56,10 +80,11 @@ func GetBeaconChainConfig(network string) *params.BeaconChainConfig {
 	default:
 		return params.MainnetConfig()
 	}
+
 }
 
-func GetForkVersion(network string, epoch primitives.Epoch) [4]byte {
-	beaconConfig := GetBeaconChainConfig(network)
+func GetForkVersion(epoch primitives.Epoch) [4]byte {
+	beaconConfig := GetBeaconChainConfig()
 
 	switch {
 	case epoch < beaconConfig.AltairForkEpoch:
@@ -77,14 +102,14 @@ func GetForkVersion(network string, epoch primitives.Epoch) [4]byte {
 	}
 }
 
-func GetCurrentForkVersion(network string) [4]byte {
-	genesisTime := GetGenesisConfig(network).GenesisTime
+func GetCurrentForkVersion() [4]byte {
+	genesisTime := GetGenesisConfig().GenesisTime
 	curEpoch := slots.ToEpoch(slots.Since(genesisTime))
-	return GetForkVersion(network, curEpoch)
+	return GetForkVersion(curEpoch)
 }
 
-func HasSubnets(network string, rawTopic string) (uint64, bool) {
-	beaconConfig := GetBeaconChainConfig(network)
+func HasSubnets(rawTopic string) (uint64, bool) {
+	beaconConfig := GetBeaconChainConfig()
 
 	switch rawTopic {
 	case p2p.BlobSubnetTopicFormat:
@@ -98,25 +123,25 @@ func HasSubnets(network string, rawTopic string) (uint64, bool) {
 	}
 }
 
-func GetSlotDuration(network string) time.Duration {
-	return 1 * time.Second * time.Duration(GetBeaconChainConfig(network).SecondsPerSlot)
+func GetSlotDuration() time.Duration {
+	return 1 * time.Second * time.Duration(GetBeaconChainConfig().SecondsPerSlot)
 }
 
-func GetEpochDuration(network string) time.Duration {
-	return GetSlotDuration(network) * time.Duration(GetBeaconChainConfig(network).SlotsPerEpoch)
+func GetEpochDuration() time.Duration {
+	return GetSlotDuration() * time.Duration(GetBeaconChainConfig().SlotsPerEpoch)
 }
 
-func GetAttestationAllSubnetBitvector(network string) bitfield.Bitvector64 {
+func GetAttestationAllSubnetBitvector() bitfield.Bitvector64 {
 	attestBitV := bitfield.NewBitvector64()
-	for i := uint64(0); i < GetBeaconChainConfig(network).AttestationSubnetCount; i++ {
+	for i := uint64(0); i < GetBeaconChainConfig().AttestationSubnetCount; i++ {
 		attestBitV.SetBitAt(i, true)
 	}
 	return attestBitV
 }
 
-func GetSyncCommitteeAllSubnetBitvector(network string) bitfield.Bitvector4 {
+func GetSyncCommitteeAllSubnetBitvector() bitfield.Bitvector4 {
 	syncBitV := bitfield.Bitvector4{byte(0x00)}
-	for i := uint64(0); i < GetBeaconChainConfig(network).SyncCommitteeSubnetCount; i++ {
+	for i := uint64(0); i < GetBeaconChainConfig().SyncCommitteeSubnetCount; i++ {
 		syncBitV.SetBitAt(i, true)
 	}
 	return syncBitV

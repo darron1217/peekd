@@ -15,7 +15,7 @@ import (
 
 type TopicHandler = func(context.Context, *pubsub.Message) error
 
-func (gs *GossipSub) mappingTopicToHandler(network, topic string) TopicHandler {
+func (gs *GossipSub) mappingTopicToHandler(topic string) TopicHandler {
 
 	switch {
 	case strings.Contains(topic, p2p.GossipBlockMessage):
