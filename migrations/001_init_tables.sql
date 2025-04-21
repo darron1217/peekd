@@ -11,7 +11,7 @@ CREATE TABLE general_message_histories (
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMMDD(arrival_time)
-ORDER BY (arrival_time, topic_group, topic, node_region, node_alias);
+ORDER BY (arrival_time, topic, node_region, node_alias);
 
 -- slot_message_stats
 CREATE TABLE slot_message_stats (
