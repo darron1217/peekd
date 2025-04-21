@@ -146,9 +146,8 @@ func (ps *peerScore) defaultAggregateTopicParams() *pubsub.TopicScoreParams {
 	switch {
 	case comms > eth.GetBeaconChainConfig().MaxCommitteesPerSlot:
 		comms = eth.GetBeaconChainConfig().MaxCommitteesPerSlot
-	case comms == 0:
-		comms = 1
 	default:
+		comms = 1
 	}
 	aggPerSlot := comms * eth.GetBeaconChainConfig().TargetAggregatorsPerCommittee
 
@@ -198,9 +197,8 @@ func (ps *peerScore) defaultAttestationTopicParams() *pubsub.TopicScoreParams {
 	switch {
 	case comms > eth.GetBeaconChainConfig().MaxCommitteesPerSlot:
 		comms = eth.GetBeaconChainConfig().MaxCommitteesPerSlot
-	case comms == 0:
-		comms = 1
 	default:
+		comms = 1
 	}
 
 	firstDecay := time.Duration(1)
