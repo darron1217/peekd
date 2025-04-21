@@ -27,7 +27,7 @@ type BeaconMessageProcessor struct {
 
 func NewBeaconMessageProcessor(repo repository.Repository) *BeaconMessageProcessor {
 	slog.Info("successfully created beacon message processor")
-	
+
 	return &BeaconMessageProcessor{
 		repo:         repo,
 		enc:          encoder.SszNetworkEncoder{},
@@ -48,71 +48,57 @@ func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Messag
 	case *ethtypes.SignedBeaconBlock:
 		metadata := p.newSlotMetadata(msg, d.Block.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("block phase0 received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockAltair:
 		metadata := p.newSlotMetadata(msg, d.Block.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("block altair received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockBellatrix:
 		metadata := p.newSlotMetadata(msg, d.Block.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("block bellatrix received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockCapella:
 		metadata := p.newSlotMetadata(msg, d.Block.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("block capella received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockDeneb:
 		metadata := p.newSlotMetadata(msg, d.Block.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("block deneb received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedBeaconBlockElectra:
 		metadata := p.newSlotMetadata(msg, d.Block.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("block electra received", "topic", msg.Topic, "data", msg.Data)
 
 	// beacon_aggregate_and_proof
 	case *ethtypes.SignedAggregateAttestationAndProof:
 		metadata := p.newSlotMetadata(msg, d.Message.Aggregate.Data.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("aggregate attestation and proof received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SignedAggregateAttestationAndProofElectra:
 		metadata := p.newSlotMetadata(msg, d.Message.Aggregate.Data.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("aggregate attestation and proof electra received", "topic", msg.Topic, "data", msg.Data)
 
 	// beacon_sync_committee_contribution_and_proof
 	case *ethtypes.SignedContributionAndProof:
 		metadata := p.newSlotMetadata(msg, d.Message.Contribution.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("sync committee contribution and proof received", "topic", msg.Topic, "data", msg.Data)
 
 	// proposer_slashing
 	case *ethtypes.ProposerSlashing:
 		metadata := p.newGeneralMetadata(msg)
 		p.processGeneralMessageMetadata(metadata)
-		slog.Debug("proposer slashing received", "topic", msg.Topic, "data", msg.Data)
 
 	// attester_slashing
 	case *ethtypes.AttesterSlashing:
 		metadata := p.newGeneralMetadata(msg)
 		p.processGeneralMessageMetadata(metadata)
-		slog.Debug("attester slashing received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.AttesterSlashingElectra:
 		metadata := p.newGeneralMetadata(msg)
 		p.processGeneralMessageMetadata(metadata)
-		slog.Debug("attester slashing electra received", "topic", msg.Topic, "data", msg.Data)
 
 	// voluntary_exit
 	case *ethtypes.VoluntaryExit:
 		metadata := p.newGeneralMetadata(msg)
 		p.processGeneralMessageMetadata(metadata)
-		slog.Debug("voluntary exit received", "topic", msg.Topic, "data", msg.Data)
 
 	// bls to execution change
 	case *ethtypes.BLSToExecutionChange:
 		metadata := p.newGeneralMetadata(msg)
 		p.processGeneralMessageMetadata(metadata)
-		slog.Debug("bls to execution change received", "topic", msg.Topic, "data", msg.Data)
 
 	// --- subnet topics ---
 
@@ -120,33 +106,27 @@ func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Messag
 	case *ethtypes.Attestation:
 		metadata := p.newSlotMetadata(msg, d.Data.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("attestation received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.AttestationElectra:
 		metadata := p.newSlotMetadata(msg, d.Data.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("attestation electra received", "topic", msg.Topic, "data", msg.Data)
 	case *ethtypes.SingleAttestation:
 		metadata := p.newSlotMetadata(msg, d.Data.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("single attestation received", "topic", msg.Topic, "data", msg.Data)
 
 	// sync committee message
 	case *ethtypes.SyncCommitteeMessage:
 		metadata := p.newSlotMetadata(msg, d.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("sync committee message received", "topic", msg.Topic, "data", msg.Data)
 
 	// sync committee contribution
 	case *ethtypes.SyncCommitteeContribution:
 		metadata := p.newSlotMetadata(msg, d.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("sync committee contribution received", "topic", msg.Topic, "data", msg.Data)
 
 	// blob sidecar
 	case *ethtypes.BlobSidecar:
 		metadata := p.newSlotMetadata(msg, d.SignedBlockHeader.Header.Slot)
 		p.processSlotMessageMetadata(metadata)
-		slog.Debug("blob sidecar received", "topic", msg.Topic, "data", msg.Data)
 
 	default:
 		return fmt.Errorf("unsupported message type: %T", dst)
