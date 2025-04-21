@@ -38,6 +38,7 @@ var (
 // TODO: need to impl custom peer score inspect function
 
 func noopPeerScoreInspectFunc(_ map[peer.ID]*pubsub.PeerScoreSnapshot) {
+	// skip as no-operating function
 }
 
 type peerScore struct {
