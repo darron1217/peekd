@@ -206,7 +206,24 @@ func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
 
 	slog.Debug("processing general message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize)
 
-	// TODO: process metadata
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	record := &repository.GeneralMessageHistory{
+		ArrivalTime:   metadata.MsgArrival,
+		TopicGroup:    TopicToTopicGroup(metadata.Topic),
+		Topic:         metadata.Topic,
+		NodeRegion:    p.nodeRegion,
+		NodeAlias:     p.nodeAlias,
+		NodePeerCount: 1, // TODO: get peer count
+		MessageID:     metadata.MsgID,
+		SizeBytes:     uint32(metadata.MsgSize),
+	}
+
+	err := p.repo.SaveGeneralMessageHistory(context.Background(), record)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -216,8 +233,6 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 ) error {
 
 	slog.Debug("processing slot message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize, "msg_delay_in_slot", metadata.MsgDelayInSlot, "slot", metadata.Slot)
-
-	// Calculate current slo
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
