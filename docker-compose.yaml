@@ -20,3 +20,17 @@ services:
     environment:
       - CH_HOST=clickhouse:8123
       - CH_NAME=default
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    env_file:
+      - .env
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      - clickhouse
