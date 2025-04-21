@@ -66,7 +66,7 @@ func (r *ClickHouseRepository) SaveGeneralMessageHistory(ctx context.Context, hi
 	query := `
 		INSERT INTO general_message_history (
 			arrival_time,
-			topic_group,
+			fork_version,
 			topic,
 			node_region,
 			node_alias,
@@ -80,7 +80,7 @@ func (r *ClickHouseRepository) SaveGeneralMessageHistory(ctx context.Context, hi
 
 	err := r.conn.Exec(ctx, query,
 		history.ArrivalTime,
-		history.TopicGroup,
+		history.ForkVersion,
 		history.Topic,
 		history.NodeRegion,
 		history.NodeAlias,
@@ -111,6 +111,7 @@ func (r *ClickHouseRepository) SaveSlotMessageStatsMulti(ctx context.Context, st
 		err := batch.Append(
 			stat.Slot,
 			stat.TopicGroup,
+			stat.ForkVersion,
 			stat.Topic,
 			stat.NodeRegion,
 			stat.NodeAlias,

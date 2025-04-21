@@ -14,6 +14,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	ssz "github.com/prysmaticlabs/fastssz"
+	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/prysmaticlabs/prysm/v5/consensus-types/primitives"
@@ -205,10 +206,12 @@ func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
 ) error {
 	slog.Debug("processing general message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize)
 
+	forkVersion, messageType := parseEth2Topic(metadata.Topic)
+
 	record := &repository.GeneralMessageHistory{
 		ArrivalTime:   metadata.MsgArrival,
-		TopicGroup:    TopicToTopicGroup(metadata.Topic),
-		Topic:         metadata.Topic,
+		ForkVersion:   forkVersion,
+		Topic:         messageType,
 		NodeRegion:    p.nodeRegion,
 		NodeAlias:     p.nodeAlias,
 		NodePeerCount: 1, // TODO: get peer count
@@ -254,10 +257,12 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 	record, exists := cache.MessageStats[metadata.MsgID]
 	if !exists {
 		slotStartTime := p.genesisTime.Add((time.Duration(metadata.Slot) * time.Second * time.Duration(p.beaconConfig.SecondsPerSlot)))
+		forkVersion, messageType := parseEth2Topic(metadata.Topic)
 		record = &repository.SlotMessageStats{
 			Slot:             metadata.Slot,
 			TopicGroup:       TopicToTopicGroup(metadata.Topic),
-			Topic:            metadata.Topic,
+			ForkVersion:      forkVersion,
+			Topic:            messageType,
 			NodeRegion:       p.nodeRegion,
 			NodeAlias:        p.nodeAlias,
 			NodePeerCount:    1, // TODO: get peer count
@@ -450,27 +455,33 @@ func (p *BeaconMessageProcessor) GetCurrentSlotStats() map[uint64]int {
 
 // TODO: optimize string search
 func TopicToTopicGroup(topic string) string {
-	if strings.Contains(topic, "/beacon_block") {
-		return "beacon_block"
-	} else if strings.Contains(topic, "/beacon_aggregate_and_proof") {
-		return "beacon_aggregate_and_proof"
-	} else if strings.Contains(topic, "/beacon_sync_committee_contribution_and_proof") {
-		return "beacon_sync_committee_contribution_and_proof"
-	} else if strings.Contains(topic, "/proposer_slashing") {
-		return "proposer_slashing"
-	} else if strings.Contains(topic, "/attester_slashing") {
-		return "attester_slashing"
-	} else if strings.Contains(topic, "/voluntary_exit") {
-		return "voluntary_exit"
-	} else if strings.Contains(topic, "/beacon_attestation") {
-		return "beacon_attestation"
-	} else if strings.Contains(topic, "/beacon_sync_committee_message") {
-		return "beacon_sync_committee_message"
-	} else if strings.Contains(topic, "/beacon_sync_committee_contribution") {
-		return "beacon_sync_committee_contribution"
-	} else if strings.Contains(topic, "/blob_sidecar") {
-		return "blob_sidecar"
+	if strings.Contains(topic, p2p.GossipBlockMessage) {
+		return p2p.GossipBlockMessage
+	} else if strings.Contains(topic, p2p.GossipAggregateAndProofMessage) {
+		return p2p.GossipAggregateAndProofMessage
+	} else if strings.Contains(topic, p2p.GossipContributionAndProofMessage) {
+		return p2p.GossipContributionAndProofMessage
+	} else if strings.Contains(topic, p2p.GossipProposerSlashingMessage) {
+		return p2p.GossipProposerSlashingMessage
+	} else if strings.Contains(topic, p2p.GossipAttesterSlashingMessage) {
+		return p2p.GossipAttesterSlashingMessage
+	} else if strings.Contains(topic, p2p.GossipExitMessage) {
+		return p2p.GossipExitMessage
+	} else if strings.Contains(topic, p2p.GossipBlsToExecutionChangeMessage) {
+		return p2p.GossipBlsToExecutionChangeMessage
+	} else if strings.Contains(topic, p2p.GossipAttestationMessage) {
+		return p2p.GossipAttestationMessage
+	} else if strings.Contains(topic, p2p.GossipSyncCommitteeMessage) {
+		return p2p.GossipSyncCommitteeMessage
+	} else if strings.Contains(topic, p2p.GossipBlobSidecarMessage) {
+		return p2p.GossipBlobSidecarMessage
 	}
 
 	return "unknown"
+}
+
+// get fork version and message type from the topic
+func parseEth2Topic(topic string) (string, string) {
+	parts := strings.Split(topic, "/")
+	return parts[2], parts[3]
 }

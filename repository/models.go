@@ -7,7 +7,7 @@ import (
 // GeneralMessageHistory represents message history as stored in the database
 type GeneralMessageHistory struct {
 	ArrivalTime   time.Time // When message was first seen
-	TopicGroup    string    // e.g., voluntary_exit, proposer_slashing, attester_slashing
+	ForkVersion   string    // Fork version
 	Topic         string    // e.g., /eth2/6a95a1a9/voluntary_exit/ssz_snappy
 	NodeRegion    string    // e.g., "CENTRAL_EUROPE", "NORTH_AMERICA", "EAST_ASIA", etc.
 	NodeAlias     string    // Alias of the watcher node
@@ -20,6 +20,7 @@ type GeneralMessageHistory struct {
 type SlotMessageStats struct {
 	Slot             uint64    // Beacon slot number (6-second interval)
 	TopicGroup       string    // e.g., block, attestation, blob
+	ForkVersion      string    // Fork version
 	Topic            string    // e.g.,
 	NodeRegion       string    // e.g., "CENTRAL_EUROPE", "NORTH_AMERICA", "EAST_ASIA", etc.
 	NodeAlias        string    // Alias of the watcher node
