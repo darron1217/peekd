@@ -57,10 +57,7 @@ func GetGenesisConfig() *GenesisConfig {
 			GenesisValidatorRoot: hexutil.MustDecode("0x212f13fc4df078b6cb7db228f1c8307566dcecf900867401a92023d7ba99cb5f"),
 		}
 	default:
-		return &GenesisConfig{
-			GenesisTime:          time.Unix(1606824023, 0),
-			GenesisValidatorRoot: hexutil.MustDecode("0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"),
-		}
+		panic(errors.New("failed to get ethereum network"))
 	}
 }
 
@@ -72,7 +69,7 @@ func GetBeaconNetworkConfig() *params.NetworkConfig {
 		params.UseHoodiNetworkConfig()
 		return params.BeaconNetworkConfig()
 	default:
-		return params.BeaconNetworkConfig()
+		panic(errors.New("failed to get ethereum network"))
 	}
 }
 
@@ -83,7 +80,7 @@ func GetBeaconChainConfig() *params.BeaconChainConfig {
 	case params.HoodiName:
 		return params.HoodiConfig()
 	default:
-		return params.MainnetConfig()
+		panic(errors.New("failed to get ethereum network"))
 	}
 
 }
