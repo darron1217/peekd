@@ -2,19 +2,18 @@ package repository
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"log/slog"
 
-	"github.com/a41-official/peekd/repository/clickhouse"
+	"github.com/pkg/errors"
 )
 
 // Repository defines the interface for data storage operations
 type Repository interface {
-	// SaveMessageStats saves a message statistics record to the database
-	SaveMessageStats(ctx context.Context, stats *MessageStats) error
+	// SaveGeneralMessageHistory saves a general message history record to the database
+	SaveGeneralMessageHistory(ctx context.Context, history *GeneralMessageHistory) error
 
-	// SaveMessageStatsMulti saves multiple message statistics records in a batch
-	SaveMessageStatsMulti(ctx context.Context, stats []*MessageStats) error
+	// SaveSlotMessageStatsMulti saves multiple message statistics records in a batch
+	SaveSlotMessageStatsMulti(ctx context.Context, stats []*SlotMessageStats) error
 
 	// Close closes the database connection
 	Close() error
@@ -30,7 +29,7 @@ const (
 
 // adapter is a wrapper that adapts different database implementations to the Repository interface
 type adapter struct {
-	chRepo *clickhouse.ClickHouseRepository
+	chRepo *ClickHouseRepository
 }
 
 type RepositoryOption struct {
@@ -97,7 +96,7 @@ func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 
 	switch o.dbType {
 	case "clickhouse":
-		chConfig := clickhouse.Config{
+		chConfig := clickhouseConfig{
 			Host:     o.dbHost,
 			Port:     uint16(o.dbPort),
 			Database: o.dbName,
@@ -105,7 +104,7 @@ func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 			Password: o.dbPassword,
 		}
 
-		chRepo, err := clickhouse.NewClickHouseRepository(chConfig)
+		chRepo, err := NewClickHouseRepository(chConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create ClickHouse repository")
 		}
@@ -119,43 +118,14 @@ func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 	}
 }
 
-// SaveMessageStats adapter method for ClickHouse
-func (a *adapter) SaveMessageStats(ctx context.Context, stats *MessageStats) error {
-	// Convert to ClickHouse-specific model
-	chStats := &clickhouse.MessageStats{
-		Slot:             stats.Slot,
-		Topic:            stats.Topic,
-		NodeRegion:       stats.NodeRegion,
-		MessageID:        stats.MessageID,
-		SlotStartTime:    stats.SlotStartTime,
-		FirstArrivalTime: stats.FirstArrivalTime,
-		LatencyMS:        stats.LatencyMS,
-		SizeBytes:        stats.SizeBytes,
-		SeenCount:        stats.SeenCount,
-		NodeID:           stats.NodeID,
-	}
-	return a.chRepo.SaveMessageStats(ctx, chStats)
+// SaveGeneralMessageHistory adapter method for ClickHouse
+func (a *adapter) SaveGeneralMessageHistory(ctx context.Context, history *GeneralMessageHistory) error {
+	return a.chRepo.SaveGeneralMessageHistory(ctx, history)
 }
 
-// SaveMessageStatsMulti adapter method for ClickHouse
-func (a *adapter) SaveMessageStatsMulti(ctx context.Context, stats []*MessageStats) error {
-	// Convert to ClickHouse-specific model
-	chStats := make([]*clickhouse.MessageStats, len(stats))
-	for i, stat := range stats {
-		chStats[i] = &clickhouse.MessageStats{
-			Slot:             stat.Slot,
-			Topic:            stat.Topic,
-			NodeRegion:       stat.NodeRegion,
-			MessageID:        stat.MessageID,
-			SlotStartTime:    stat.SlotStartTime,
-			FirstArrivalTime: stat.FirstArrivalTime,
-			LatencyMS:        stat.LatencyMS,
-			SizeBytes:        stat.SizeBytes,
-			SeenCount:        stat.SeenCount,
-			NodeID:           stat.NodeID,
-		}
-	}
-	return a.chRepo.SaveMessageStatsMulti(ctx, chStats)
+// SaveSlotMessageStatsMulti adapter method for ClickHouse
+func (a *adapter) SaveSlotMessageStatsMulti(ctx context.Context, stats []*SlotMessageStats) error {
+	return a.chRepo.SaveSlotMessageStatsMulti(ctx, stats)
 }
 
 // Close the database connection

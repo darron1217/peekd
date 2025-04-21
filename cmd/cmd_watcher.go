@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"strings"
+
 	"github.com/a41-official/peekd/watcher"
 	"github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/urfave/cli/v3"
-	"log/slog"
-	"os"
-	"strings"
 )
 
 const (
@@ -30,6 +31,10 @@ const (
 	FlagDbName     = "db-name"
 	FlagDbUser     = "db-user"
 	FlagDbPassword = "db-password"
+
+	// Node related flags
+	FlagNodeAlias  = "node-alias"
+	FlagNodeRegion = "node-region"
 )
 
 var cmdWatcher = &cli.Command{
@@ -114,6 +119,18 @@ var cmdWatcher = &cli.Command{
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "DB_PASSWORD")),
 			DefaultText: "",
 		},
+		&cli.StringFlag{
+			Name:        FlagNodeAlias,
+			Usage:       "Node Alias",
+			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "NODE_ALIAS")),
+			DefaultText: "",
+		},
+		&cli.StringFlag{
+			Name:        FlagNodeRegion,
+			Usage:       "Node region",
+			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "NODE_REGION")),
+			DefaultText: "",
+		},
 	},
 }
 
@@ -174,6 +191,12 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	}
 	if cmd.IsSet(FlagDbPassword) {
 		opts = append(opts, watcher.WithDBPassword(cmd.String(FlagDbPassword)))
+	}
+	if cmd.IsSet(FlagNodeAlias) {
+		opts = append(opts, watcher.WithNodeAlias(cmd.String(FlagNodeAlias)))
+	}
+	if cmd.IsSet(FlagNodeRegion) {
+		opts = append(opts, watcher.WithNodeRegion(cmd.String(FlagNodeRegion)))
 	}
 
 	slog.Info("starting watcher")

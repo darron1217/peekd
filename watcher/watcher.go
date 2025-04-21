@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+
 	"github.com/a41-official/peekd/eth"
 
 	"github.com/a41-official/peekd/gossip"
@@ -39,6 +40,8 @@ type WatcherOption struct {
 	dbPort                   int
 	dbUser                   string
 	dbPassword               string
+	nodeAlias                string
+	nodeRegion               string
 }
 
 type WatcherOptionFunc func(*WatcherOption)
@@ -115,6 +118,18 @@ func WithDBPassword(dbPassword string) WatcherOptionFunc {
 	}
 }
 
+func WithNodeAlias(nodeAlias string) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.nodeAlias = nodeAlias
+	}
+}
+
+func WithNodeRegion(nodeRegion string) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.nodeRegion = nodeRegion
+	}
+}
+
 type Watcher struct {
 	supervisor *suture.Supervisor
 	repo       repository.Repository
@@ -127,6 +142,8 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		portUDP:            8080,
 		portTCP:            8080,
 		ethNetwork:         params.MainnetName,
+		nodeAlias:          "",
+		nodeRegion:         "",
 	}
 
 	for _, opt := range opts {
@@ -151,7 +168,11 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	}
 
 	// initialize message processor
-	messageProcessor := processor.NewBeaconMessageProcessor(repo)
+	messageProcessor := processor.NewBeaconMessageProcessor(
+		processor.WithRepository(repo),
+		processor.WithNodeAlias(o.nodeAlias),
+		processor.WithNodeRegion(o.nodeRegion),
+	)
 
 	// initialize p2p
 	ecdsaKey, secpKey, err := retrievePrivateKeys(o.ecdsaPrivateKeyHex)

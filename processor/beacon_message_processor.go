@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/a41-official/peekd/eth"
@@ -18,22 +20,85 @@ import (
 	ethtypes "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 )
 
+// SlotCache stores message records for a specific slot
+type SlotCache struct {
+	Slot         uint64
+	MessageStats map[string]*repository.SlotMessageStats // slot -> record
+}
+
+// BeaconMessageProcessor processes and stores beacon chain messages
 type BeaconMessageProcessor struct {
 	enc          encoder.NetworkEncoding
 	repo         repository.Repository
 	beaconConfig *params.BeaconChainConfig
 	genesisTime  time.Time
+	nodeAlias    string
+	nodeRegion   string
+
+	mu         sync.RWMutex
+	slotCaches map[uint64]*SlotCache // slot -> cache
+
+	// Channel to notify about new messages without blocking
+	messageNotify chan struct{}
+
+	// Control channels
+	done    chan struct{}
+	stopped bool
 }
 
-func NewBeaconMessageProcessor(repo repository.Repository) *BeaconMessageProcessor {
-	slog.Info("successfully created beacon message processor")
+type BeaconMessageProcessorOption struct {
+	repo       repository.Repository
+	nodeAlias  string
+	nodeRegion string
+}
 
-	return &BeaconMessageProcessor{
-		repo:         repo,
-		enc:          encoder.SszNetworkEncoder{},
-		beaconConfig: eth.GetBeaconChainConfig(),
-		genesisTime:  eth.GetGenesisConfig().GenesisTime,
+type BeaconMessageProcessorOptionFunc func(*BeaconMessageProcessorOption)
+
+func WithRepository(repo repository.Repository) BeaconMessageProcessorOptionFunc {
+	return func(o *BeaconMessageProcessorOption) {
+		o.repo = repo
 	}
+}
+
+func WithNodeAlias(nodeAlias string) BeaconMessageProcessorOptionFunc {
+	return func(o *BeaconMessageProcessorOption) {
+		o.nodeAlias = nodeAlias
+	}
+}
+
+func WithNodeRegion(nodeRegion string) BeaconMessageProcessorOptionFunc {
+	return func(o *BeaconMessageProcessorOption) {
+		o.nodeRegion = nodeRegion
+	}
+}
+
+func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *BeaconMessageProcessor {
+	o := &BeaconMessageProcessorOption{
+		nodeAlias:  "",
+		nodeRegion: "",
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	processor := &BeaconMessageProcessor{
+		repo:          o.repo,
+		nodeAlias:     o.nodeAlias,
+		nodeRegion:    o.nodeRegion,
+		enc:           encoder.SszNetworkEncoder{},
+		beaconConfig:  eth.GetBeaconChainConfig(),
+		genesisTime:   eth.GetGenesisConfig().GenesisTime,
+		slotCaches:    make(map[uint64]*SlotCache),
+		messageNotify: make(chan struct{}, 100), // Buffer to prevent blocking
+		done:          make(chan struct{}),
+	}
+
+	// Start the background processor
+	go processor.processLoop()
+
+	slog.Info("successfully created beacon message processor")
+	return processor
 }
 
 func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Message, dst ssz.Unmarshaler) error {
@@ -152,7 +217,52 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 
 	slog.Debug("processing slot message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize, "msg_delay_in_slot", metadata.MsgDelayInSlot, "slot", metadata.Slot)
 
-	// TODO: process metadata
+	// Calculate current slo
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Get or create the slot cache
+	cache, exists := p.slotCaches[metadata.Slot]
+	if !exists {
+		cache = &SlotCache{
+			Slot:         metadata.Slot,
+			MessageStats: make(map[string]*repository.SlotMessageStats),
+		}
+		p.slotCaches[metadata.Slot] = cache
+	}
+
+	// Get or create the message record
+	record, exists := cache.MessageStats[metadata.MsgID]
+	if !exists {
+		slotStartTime := p.genesisTime.Add((time.Duration(metadata.Slot) * time.Second * time.Duration(p.beaconConfig.SecondsPerSlot)))
+		record = &repository.SlotMessageStats{
+			Slot:             metadata.Slot,
+			TopicGroup:       TopicToTopicGroup(metadata.Topic),
+			Topic:            metadata.Topic,
+			NodeRegion:       p.nodeRegion,
+			NodeAlias:        p.nodeAlias,
+			NodePeerCount:    1, // TODO: get peer count
+			MessageID:        metadata.MsgID,
+			SlotStartTime:    slotStartTime,
+			FirstArrivalTime: metadata.MsgArrival,
+			LatencyMS:        uint32(metadata.MsgDelayInSlot.Milliseconds()),
+			SizeBytes:        uint32(metadata.MsgSize),
+			SeenCount:        1,
+		}
+		cache.MessageStats[metadata.MsgID] = record
+	} else {
+		// Only increment seen count - this is where we track duplicates
+		record.SeenCount++
+	}
+
+	// Notify the processor without blocking
+	select {
+	case p.messageNotify <- struct{}{}:
+		// Successfully notified
+	default:
+		// Channel is full, but that's okay - the regular timer will catch up
+	}
 
 	return nil
 }
@@ -188,4 +298,161 @@ func (p *BeaconMessageProcessor) getDelayInSlot(arrivalTime time.Time, slot prim
 	// compare the arrival time to the base-slot time
 	inSlotTime := arrivalTime.Sub(slotTime)
 	return inSlotTime
+}
+
+// getSlotDuration returns the duration of a beacon slot from the beacon config
+func (p *BeaconMessageProcessor) getSlotDuration() time.Duration {
+	return time.Duration(p.beaconConfig.SecondsPerSlot) * time.Second
+}
+
+// processLoop runs in the background to periodically flush completed slots to the database
+func (p *BeaconMessageProcessor) processLoop() {
+	// FlushInterval is how often to check for completed slots
+	flushInterval := time.Duration(p.beaconConfig.SecondsPerSlot) * time.Second
+
+	ticker := time.NewTicker(flushInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-p.done:
+			// Final flush before shutdown
+			p.flushCompletedSlots()
+			return
+		case <-ticker.C:
+			// Regular interval check
+			p.flushCompletedSlots()
+		case <-p.messageNotify:
+			// A new message was processed, but we don't need to do anything immediately
+			// The timer will handle flushing
+		}
+	}
+}
+
+// flushCompletedSlots identifies completed slots and saves them to the database
+func (p *BeaconMessageProcessor) flushCompletedSlots() {
+	now := time.Now()
+	slotDuration := p.getSlotDuration()
+	currentSlot := uint64(now.Unix()) / uint64(slotDuration.Seconds())
+
+	// Lock for reading the map and identifying slots to process
+	p.mu.RLock()
+	var slotsToFlush []uint64
+	for slot, _ := range p.slotCaches {
+		// Flush slots that are at least 2 slots old or haven't been modified in a while
+		if slot < currentSlot-1 {
+			slotsToFlush = append(slotsToFlush, slot)
+		}
+	}
+	p.mu.RUnlock()
+
+	// Process each slot
+	for _, slot := range slotsToFlush {
+		stats := p.prepareAndRemoveSlot(slot)
+		if len(stats) > 0 {
+			p.saveToRepository(stats)
+		}
+	}
+}
+
+// prepareAndRemoveSlot prepares stats entities and removes the slot from cache
+func (p *BeaconMessageProcessor) prepareAndRemoveSlot(slot uint64) []*repository.SlotMessageStats {
+	p.mu.Lock()
+	cache, exists := p.slotCaches[slot]
+	if !exists {
+		p.mu.Unlock()
+		return nil
+	}
+
+	// Remove the cache so we don't process it again
+	delete(p.slotCaches, slot)
+	p.mu.Unlock()
+
+	// Prepare the stats
+	stats := make([]*repository.SlotMessageStats, 0, len(cache.MessageStats))
+	for _, messageStat := range cache.MessageStats {
+		stats = append(stats, messageStat)
+	}
+
+	return stats
+}
+
+// saveToRepository saves the stats to the repository in batches
+func (p *BeaconMessageProcessor) saveToRepository(stats []*repository.SlotMessageStats) {
+	if len(stats) == 0 {
+		return
+	}
+
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Log the batch size
+	slog.With(
+		"slot", stats[0].Slot,
+		"message_count", len(stats),
+	).Info("saving message batch to repository")
+
+	// Save the batch
+	err := p.repo.SaveSlotMessageStatsMulti(ctx, stats)
+	if err != nil {
+		slog.With("error", err).
+			With("slot", stats[0].Slot).
+			With("message_count", len(stats)).
+			Error("failed to save slot message stats batch")
+	}
+}
+
+// Stop stops the processor and flushes any remaining data
+func (p *BeaconMessageProcessor) Stop() {
+	p.mu.Lock()
+	if p.stopped {
+		p.mu.Unlock()
+		return
+	}
+	p.stopped = true
+	p.mu.Unlock()
+
+	// Signal the processor to stop
+	close(p.done)
+}
+
+// GetCurrentSlotStats returns stats about the currently tracked slots
+func (p *BeaconMessageProcessor) GetCurrentSlotStats() map[uint64]int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	stats := make(map[uint64]int)
+	for slot, cache := range p.slotCaches {
+		stats[slot] = len(cache.MessageStats)
+	}
+
+	return stats
+}
+
+// TODO: optimize string search
+func TopicToTopicGroup(topic string) string {
+	if strings.Contains(topic, "/beacon_block") {
+		return "beacon_block"
+	} else if strings.Contains(topic, "/beacon_aggregate_and_proof") {
+		return "beacon_aggregate_and_proof"
+	} else if strings.Contains(topic, "/beacon_sync_committee_contribution_and_proof") {
+		return "beacon_sync_committee_contribution_and_proof"
+	} else if strings.Contains(topic, "/proposer_slashing") {
+		return "proposer_slashing"
+	} else if strings.Contains(topic, "/attester_slashing") {
+		return "attester_slashing"
+	} else if strings.Contains(topic, "/voluntary_exit") {
+		return "voluntary_exit"
+	} else if strings.Contains(topic, "/beacon_attestation") {
+		return "beacon_attestation"
+	} else if strings.Contains(topic, "/beacon_sync_committee_message") {
+		return "beacon_sync_committee_message"
+	} else if strings.Contains(topic, "/beacon_sync_committee_contribution") {
+		return "beacon_sync_committee_contribution"
+	} else if strings.Contains(topic, "/blob_sidecar") {
+		return "blob_sidecar"
+	}
+
+	return "unknown"
 }
