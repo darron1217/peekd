@@ -203,11 +203,7 @@ func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Messag
 func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
 	metadata *GeneralMessageMetadata,
 ) error {
-
 	slog.Debug("processing general message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize)
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
 
 	record := &repository.GeneralMessageHistory{
 		ArrivalTime:   metadata.MsgArrival,
@@ -220,10 +216,17 @@ func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
 		SizeBytes:     uint32(metadata.MsgSize),
 	}
 
-	err := p.repo.SaveGeneralMessageHistory(context.Background(), record)
-	if err != nil {
-		return err
-	}
+	// async save to repository
+	go func(r *repository.GeneralMessageHistory) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := p.repo.SaveGeneralMessageHistory(ctx, r); err != nil {
+			slog.With("error", err).
+				With("msg_id", r.MessageID).
+				Error("failed to save general message history")
+		}
+	}(record)
 
 	return nil
 }
