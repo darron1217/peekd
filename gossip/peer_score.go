@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,16 +36,13 @@ var (
 		syncContributionWeight + attesterSlashingWeight + proposerSlashingWeight + voluntaryExitWeight + blsToExecutionChangeWeight)
 )
 
-// TODO: need to impl custom peer score inspect function
-
-func noopPeerScoreInspectFunc(_ map[peer.ID]*pubsub.PeerScoreSnapshot) {
-	// skip as no-operating function
-}
-
 type peerScore struct {
 	estimateActiveValidators uint64
 	topics                   []string
 	inspectPeriod            time.Duration
+
+	snapshotsMu sync.Mutex
+	snapshots   map[peer.ID]*pubsub.PeerScoreSnapshot
 }
 
 func newPeerScore(estimateActiveValidators uint64, topics []string, inspectPeriod time.Duration) *peerScore {
@@ -52,10 +50,26 @@ func newPeerScore(estimateActiveValidators uint64, topics []string, inspectPerio
 		estimateActiveValidators: estimateActiveValidators,
 		topics:                   topics,
 		inspectPeriod:            inspectPeriod,
+		snapshots:                make(map[peer.ID]*pubsub.PeerScoreSnapshot),
 	}
 }
 
-func (_ *peerScore) noopInspectFunc(_ map[peer.ID]*pubsub.PeerScoreSnapshot) {
+func (ps *peerScore) inspect(scores map[peer.ID]*pubsub.PeerScoreSnapshot) {
+	ps.snapshotsMu.Lock()
+	ps.snapshots = scores
+	ps.snapshotsMu.Unlock()
+}
+
+func (ps *peerScore) get(pid peer.ID) float64 {
+	ps.snapshotsMu.Lock()
+	snapshot, ok := ps.snapshots[pid]
+	ps.snapshotsMu.Unlock()
+
+	if ok {
+		return snapshot.Score
+	} else {
+		return 0
+	}
 }
 
 func (ps *peerScore) params() (*pubsub.PeerScoreParams, *pubsub.PeerScoreThresholds) {

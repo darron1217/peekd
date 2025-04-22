@@ -3,7 +3,9 @@ package gossip
 import (
 	"context"
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/a41-official/peekd/eth"
@@ -15,12 +17,14 @@ import (
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
-	"github.com/prysmaticlabs/prysm/v5/math"
+	ethmath "github.com/prysmaticlabs/prysm/v5/math"
 	"github.com/prysmaticlabs/prysm/v5/network/forks"
 	"github.com/thejerf/suture/v4"
 )
 
 const (
+	gossipThreshold = -100.0
+
 	gossipSubD   = 8
 	gossipSubDlo = 6
 	gossipSubDhi = 12
@@ -38,7 +42,6 @@ type GossipSubOption struct {
 	topics                   []string
 	estimateActiveValidators uint64
 
-	peerScoreInspectFunc   pubsub.ExtendedPeerScoreInspectFn
 	peerScoreInspectPeriod time.Duration
 
 	messageProcessor *processor.BeaconMessageProcessor
@@ -55,12 +58,6 @@ func WithEstimateActiveValidators(estimateActiveValidators uint64) GossipSubOpti
 func WithTopics(topics ...string) GossipSubOptionFunc {
 	return func(o *GossipSubOption) {
 		o.topics = topics
-	}
-}
-
-func WithPeerScoreInspectFunc(inspectFunc pubsub.ExtendedPeerScoreInspectFn) GossipSubOptionFunc {
-	return func(o *GossipSubOption) {
-		o.peerScoreInspectFunc = inspectFunc
 	}
 }
 
@@ -102,7 +99,6 @@ func NewGossipSub(opts ...GossipSubOptionFunc) (*GossipSub, error) {
 	o := &GossipSubOption{
 		estimateActiveValidators: 0,
 		topics:                   make([]string, 0),
-		peerScoreInspectFunc:     noopPeerScoreInspectFunc,
 		peerScoreInspectPeriod:   12 * time.Second,
 		supervisor:               suture.NewSimple("gossipSub"),
 		host:                     nil,
@@ -186,7 +182,7 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 		}),
 		pubsub.WithMaxMessageSize(gs.maxMessageSize()),
 		pubsub.WithPeerScore(gs.peerScore.params()),
-		pubsub.WithPeerScoreInspect(gs.peerScore.noopInspectFunc, gs.peerScore.inspectPeriod),
+		pubsub.WithPeerScoreInspect(gs.peerScore.inspect, gs.peerScore.inspectPeriod),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create gossipSub")
@@ -208,8 +204,28 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 		gs.supervisor.Add(newSubscription(gs.host.ID(), subscription, topicHandler))
 	}
 
+	go func() {
+		ticker := time.NewTicker(eth.GetSlotDuration())
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				gs.prune()
+			}
+		}
+	}()
+
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (gs *GossipSub) isBadPeer(pid peer.ID) bool {
+	if gs.peerScore.get(pid) < gossipThreshold {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (gs *GossipSub) gossipSubParams() pubsub.GossipSubParams {
@@ -225,5 +241,49 @@ func (gs *GossipSub) gossipSubParams() pubsub.GossipSubParams {
 
 func (gs *GossipSub) maxMessageSize() int {
 	maxCompressedLen := encoder.MaxCompressedLen(eth.GetBeaconChainConfig().MaxPayloadSize)
-	return int(math.Max(maxCompressedLen+1024, 1024*1024))
+	return int(ethmath.Max(maxCompressedLen+1024, 1024*1024))
+}
+
+func (gs *GossipSub) prune() {
+	if gs.host.Network() == nil {
+		return
+	}
+
+	type pair struct {
+		id    peer.ID
+		score float64
+	}
+
+	peerScores := make(map[peer.ID]float64)
+	for _, conn := range gs.host.Network().Conns() {
+		pid := conn.RemotePeer()
+		score := gs.peerScore.get(pid)
+		if prev, ok := peerScores[pid]; !ok || score < prev {
+			peerScores[pid] = score
+		}
+	}
+
+	pairs := make([]pair, 0)
+	for pid, score := range peerScores {
+		pairs = append(pairs, pair{pid, score})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].score < pairs[j].score
+	})
+
+	excess := gs.host.TotalPeerCount() - gs.host.TargetPeerCount()
+	pruned := 0
+
+	for i, p := range pairs {
+		if !(i < excess || gs.isBadPeer(p.id)) {
+			break
+		}
+
+		_ = gs.host.Network().ClosePeer(p.id)
+		pruned += 1
+		continue
+	}
+
+	slog.With("count", pruned).
+		Info("pruned peers")
 }
