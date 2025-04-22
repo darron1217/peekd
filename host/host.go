@@ -10,12 +10,15 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"log/slog"
+	"net"
 	"time"
 )
 
@@ -103,10 +106,24 @@ func NewHost(opts ...HostOptionFunc) (*Host, error) {
 		o.rcMgr = rcMgr
 	}
 
-	multiaddr := fmt.Sprintf("/ip4/%s/tcp/%d", o.ip, o.port)
+	var multiaddr ma.Multiaddr
+	var err error
+	parsed := net.ParseIP(o.ip)
+	if parsed == nil {
+		return nil, errors.New("failed to parse ip address")
+	}
+	if parsed.To16() != nil {
+		return nil, errors.New("does not support ipv6")
+	}
+	if parsed.To4() != nil {
+		multiaddr, err = ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", o.ip, o.port))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse tcp multiaddr")
+		}
+	}
 
 	libp2pHost, err := libp2p.New(
-		libp2p.ListenAddrStrings(multiaddr),
+		libp2p.ListenAddrs(multiaddr),
 		libp2p.Identity(o.privateKey),
 		libp2p.UserAgent(o.userAgent),
 		libp2p.Transport(tcp.NewTCPTransport),
@@ -152,7 +169,6 @@ func (h *Host) Serve(ctx context.Context) error {
 
 	go func() {
 		ticker := time.NewTicker(time.Minute)
-
 		for {
 			select {
 			case <-ctx.Done():
@@ -161,19 +177,8 @@ func (h *Host) Serve(ctx context.Context) error {
 				if h.Network() == nil {
 					continue
 				}
-
-				in, out := 0, 0
-				for _, conn := range h.Network().Conns() {
-					if conn.Stat().Direction == network.DirInbound {
-						in += 1
-					}
-					if conn.Stat().Direction == network.DirOutbound {
-						out += 1
-					}
-				}
-
-				slog.With("inbound_peers", in).
-					With("outbound_peers", out).
+				slog.With("inbound_peers", h.InboundPeerCount()).
+					With("outbound_peers", h.OutboundPeerCount()).
 					Info("connected peers status")
 			}
 		}
@@ -181,4 +186,34 @@ func (h *Host) Serve(ctx context.Context) error {
 
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (h *Host) TotalPeerCount() int {
+	peers := make(map[peer.ID]struct{})
+	for _, conn := range h.Network().Conns() {
+		peers[conn.RemotePeer()] = struct{}{}
+	}
+	return len(peers)
+}
+
+func (h *Host) InboundPeerCount() int {
+	peers := make(map[peer.ID]struct{})
+	for _, conn := range h.Network().Conns() {
+		if conn.Stat().Direction != network.DirInbound {
+			continue
+		}
+		peers[conn.RemotePeer()] = struct{}{}
+	}
+	return len(peers)
+}
+
+func (h *Host) OutboundPeerCount() int {
+	peers := make(map[peer.ID]struct{})
+	for _, conn := range h.Network().Conns() {
+		if conn.Stat().Direction != network.DirOutbound {
+			continue
+		}
+		peers[conn.RemotePeer()] = struct{}{}
+	}
+	return len(peers)
 }
