@@ -21,10 +21,6 @@ import (
 	"github.com/thejerf/suture/v4"
 )
 
-// TODO
-// log-level
-// metric
-
 const UserAgent = "peekd"
 
 type WatcherOption struct {

@@ -55,7 +55,7 @@ var cmdWatcher = &cli.Command{
 		&cli.StringFlag{
 			Name:        FlagListenIp,
 			Usage:       "Listen IP for p2p networking",
-			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "IP")),
+			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "LISTEN_IP")),
 			DefaultText: "127.0.0.1",
 		},
 		&cli.IntFlag{
