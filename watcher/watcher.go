@@ -171,13 +171,6 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		return nil, errors.Wrap(err, "failed to initialize repository")
 	}
 
-	// initialize message processor
-	messageProcessor := processor.NewBeaconMessageProcessor(
-		processor.WithRepository(repo),
-		processor.WithNodeAlias(o.nodeAlias),
-		processor.WithNodeRegion(o.nodeRegion),
-	)
-
 	// initialize p2p
 	ecdsaKey, secpKey, err := retrievePrivateKeys(o.ecdsaPrivateKeyHex)
 	if err != nil {
@@ -215,6 +208,15 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		return nil, errors.Wrap(err, "failed to create dialer")
 	}
 
+	// initialize message processor
+	messageProcessor := processor.NewBeaconMessageProcessor(
+		processor.WithRepository(repo),
+		processor.WithHost(localHost),
+		processor.WithNodeAlias(o.nodeAlias),
+		processor.WithNodeRegion(o.nodeRegion),
+	)
+
+	// initialize gossipSub
 	gossipSub, err := gossip.NewGossipSub(
 		gossip.WithEstimateActiveValidators(o.estimateActiveValidators),
 		gossip.WithSupervisor(supervisor),
