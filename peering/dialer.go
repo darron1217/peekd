@@ -38,7 +38,7 @@ func (d *Dialer) Serve(ctx context.Context) error {
 	defer slog.Info("stopping dialer service")
 
 	for {
-		if d.host.TotalPeerCount() >= d.host.TargetPeerCount() {
+		if float64(d.host.OutboundPeerCount()) >= float64(d.host.TargetPeerCount())*0.2 {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
