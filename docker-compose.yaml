@@ -22,12 +22,12 @@ services:
       - CH_NAME=default
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
+    image: a41ventures/peekd:latest
+    pull_policy: always
     restart: unless-stopped
+    ports:
+      - "9090:9090/tcp"
+      - "9090:9090/udp"
     env_file:
       - .env
     extra_hosts:
