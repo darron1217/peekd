@@ -284,6 +284,8 @@ func (gs *GossipSub) prune() {
 		continue
 	}
 
-	slog.With("count", pruned).
-		Info("pruned peers")
+	if pruned > 0 {
+		slog.With("count", pruned).
+			Info("pruned peers")
+	}
 }
