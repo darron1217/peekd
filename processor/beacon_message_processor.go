@@ -468,19 +468,6 @@ func (p *BeaconMessageProcessor) Stop() {
 	close(p.done)
 }
 
-// GetCurrentSlotStats returns stats about the currently tracked slots
-func (p *BeaconMessageProcessor) GetCurrentSlotStats() map[uint64]int {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	stats := make(map[uint64]int)
-	for slot, cache := range p.slotCaches {
-		stats[slot] = len(cache.MessageStats)
-	}
-
-	return stats
-}
-
 // TODO: optimize string search
 func TopicToTopicGroup(topic string) string {
 	if strings.Contains(topic, p2p.GossipBlockMessage) {
