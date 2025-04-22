@@ -38,17 +38,6 @@ func (d *Dialer) Serve(ctx context.Context) error {
 	defer slog.Info("stopping dialer service")
 
 	for {
-		isOutboundEnough := float64(d.host.OutboundPeerCount()) >= float64(d.host.TargetPeerCount())*0.2
-		isTotalEnough := d.host.TotalPeerCount() >= d.host.TargetPeerCount()
-		if isOutboundEnough && isTotalEnough {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(time.Second):
-				continue
-			}
-		}
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -60,14 +49,18 @@ func (d *Dialer) Serve(ctx context.Context) error {
 				continue
 			}
 
-			timeoutCtx, cancel := context.WithTimeout(ctx, ConnTimeout)
-			err := d.host.Connect(timeoutCtx, *addrInfo)
-			cancel()
-			if err != nil {
-				slog.With("peer_id", addrInfo.ID).
-					Debug("failed to connect with peer")
+			if float64(d.host.OutboundPeerCount()) >= float64(d.host.TargetPeerCount())*0.2 &&
+				d.host.TotalPeerCount() >= d.host.TargetPeerCount() {
+				<-time.After(time.Second)
 				continue
 			}
+
+			go func() {
+				timeoutCtx, cancel := context.WithTimeout(ctx, ConnTimeout)
+				defer cancel()
+
+				_ = d.host.Connect(timeoutCtx, *addrInfo)
+			}()
 		}
 	}
 }
