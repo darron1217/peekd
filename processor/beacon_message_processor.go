@@ -395,7 +395,11 @@ func (p *BeaconMessageProcessor) flushCompletedSlots() {
 					stat.SeenCount = 1
 				}
 			}
-			p.saveToRepository(stats)
+			if err := p.saveToRepository(stats); err != nil {
+				slog.With("error", err).
+					With("slot", stats[0].Slot).
+					Error("failed to save slot message stats batch")
+			}
 		}
 	}
 }
