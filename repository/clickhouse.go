@@ -64,7 +64,7 @@ func (r *ClickHouseRepository) SaveGeneralMessageHistory(ctx context.Context, hi
 	}
 
 	query := `
-		INSERT INTO general_message_history (
+		INSERT INTO general_message_histories (
 			arrival_time,
 			fork_version,
 			topic,
