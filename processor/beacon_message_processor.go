@@ -39,6 +39,9 @@ type BeaconMessageProcessor struct {
 	mu         sync.RWMutex
 	slotCaches map[uint64]*SlotCache // slot -> cache
 
+	seenMu     sync.Mutex
+	seenCounts map[string]uint32 // msg_id -> seen_count
+
 	// Channel to notify about new messages without blocking
 	messageNotify chan struct{}
 
@@ -91,6 +94,7 @@ func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *Beacon
 		beaconConfig:  eth.GetBeaconChainConfig(),
 		genesisTime:   eth.GetGenesisConfig().GenesisTime,
 		slotCaches:    make(map[uint64]*SlotCache),
+		seenCounts:    make(map[string]uint32),
 		messageNotify: make(chan struct{}, 100), // Buffer to prevent blocking
 		done:          make(chan struct{}),
 	}
@@ -271,12 +275,11 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 			FirstArrivalTime: metadata.MsgArrival,
 			LatencyMS:        uint32(metadata.MsgDelayInSlot.Milliseconds()),
 			SizeBytes:        uint32(metadata.MsgSize),
-			SeenCount:        1,
 		}
 		cache.MessageStats[metadata.MsgID] = record
 	} else {
-		// Only increment seen count - this is where we track duplicates
-		record.SeenCount++
+		slog.Error("libp2p pubsub message cannot be processed twice", "msg_id", metadata.MsgID)
+		// TODO: handle this as a fatal error
 	}
 
 	// Notify the processor without blocking
@@ -373,6 +376,14 @@ func (p *BeaconMessageProcessor) flushCompletedSlots() {
 	for _, slot := range slotsToFlush {
 		stats := p.prepareAndRemoveSlot(slot)
 		if len(stats) > 0 {
+			for _, stat := range stats {
+				seenCount, ok := p.popSeenCount(stat.MessageID)
+				if ok {
+					stat.SeenCount = seenCount
+				} else {
+					stat.SeenCount = 1
+				}
+			}
 			p.saveToRepository(stats)
 		}
 	}
@@ -401,20 +412,14 @@ func (p *BeaconMessageProcessor) prepareAndRemoveSlot(slot uint64) []*repository
 }
 
 // saveToRepository saves the stats to the repository in batches
-func (p *BeaconMessageProcessor) saveToRepository(stats []*repository.SlotMessageStats) {
+func (p *BeaconMessageProcessor) saveToRepository(stats []*repository.SlotMessageStats) error {
 	if len(stats) == 0 {
-		return
+		return nil
 	}
 
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	// Log the batch size
-	slog.With(
-		"slot", stats[0].Slot,
-		"message_count", len(stats),
-	).Info("saving message batch to repository")
 
 	// Save the batch
 	err := p.repo.SaveSlotMessageStatsMulti(ctx, stats)
@@ -423,7 +428,15 @@ func (p *BeaconMessageProcessor) saveToRepository(stats []*repository.SlotMessag
 			With("slot", stats[0].Slot).
 			With("message_count", len(stats)).
 			Error("failed to save slot message stats batch")
+		return err
 	}
+
+	slog.With(
+		"slot", stats[0].Slot,
+		"message_count", len(stats),
+	).Info("saved message batch to repository")
+
+	return nil
 }
 
 // Stop stops the processor and flushes any remaining data
@@ -484,4 +497,25 @@ func TopicToTopicGroup(topic string) string {
 func parseEth2Topic(topic string) (string, string) {
 	parts := strings.Split(topic, "/")
 	return parts[2], parts[3]
+}
+
+func (p *BeaconMessageProcessor) popSeenCount(msgID string) (uint32, bool) {
+	p.seenMu.Lock()
+	defer p.seenMu.Unlock()
+
+	value, ok := p.seenCounts[msgID]
+	if ok {
+		delete(p.seenCounts, msgID)
+		return value, true
+	}
+
+	return 0, false
+}
+
+func (p *BeaconMessageProcessor) IncreaseSeenCountByRawID(msgIDRaw string) {
+	msgID := hex.EncodeToString([]byte(msgIDRaw))
+
+	p.seenMu.Lock()
+	p.seenCounts[msgID]++
+	p.seenMu.Unlock()
 }

@@ -3,10 +3,11 @@ package gossip
 import (
 	"context"
 	"fmt"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"log/slog"
 	"sort"
 	"time"
+
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/a41-official/peekd/eth"
 	"github.com/a41-official/peekd/host"
@@ -178,7 +179,9 @@ func (gs *GossipSub) Serve(ctx context.Context) error {
 		pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign),
 		pubsub.WithNoAuthor(),
 		pubsub.WithMessageIdFn(func(pmsg *pubsubpb.Message) string {
-			return p2p.MsgID(gs.beaconConfig.GenesisValidatorsRoot[:], pmsg)
+			msgID := p2p.MsgID(gs.beaconConfig.GenesisValidatorsRoot[:], pmsg)
+			gs.messageProcessor.IncreaseSeenCountByRawID(msgID)
+			return msgID
 		}),
 		pubsub.WithMaxMessageSize(gs.maxMessageSize()),
 		pubsub.WithPeerScore(gs.peerScore.params()),
