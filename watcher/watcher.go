@@ -28,6 +28,7 @@ type WatcherOption struct {
 	listenIP                 string
 	portUDP                  int
 	portTCP                  int
+	targetPeers              int
 	ethNetwork               string
 	estimateActiveValidators uint64
 	dbType                   string
@@ -63,6 +64,12 @@ func WithPortUDP(port int) WatcherOptionFunc {
 func WithPortTCP(port int) WatcherOptionFunc {
 	return func(o *WatcherOption) {
 		o.portTCP = port
+	}
+}
+
+func WithTargetPeers(targetPeers int) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.targetPeers = targetPeers
 	}
 }
 
@@ -137,6 +144,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		listenIP:           "127.0.0.1",
 		portUDP:            9090,
 		portTCP:            9090,
+		targetPeers:        100,
 		ethNetwork:         params.MainnetName,
 		nodeAlias:          "",
 		nodeRegion:         "",
@@ -183,6 +191,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		host.WithPort(o.portTCP),
 		host.WithPrivateKey(secpKey),
 		host.WithUserAgent(UserAgent),
+		host.WithTargetPeers(o.targetPeers),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create host")

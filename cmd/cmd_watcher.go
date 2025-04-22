@@ -21,6 +21,7 @@ const (
 	FlagListenIp                 = "listen-ip"
 	FlagUDPPort                  = "udp-port"
 	FlagTCPPort                  = "tcp-port"
+	FlagTargetPeers              = "target-peers"
 	FlagNetwork                  = "network"
 	FlagEstimateActiveValidators = "estimate-active-validators"
 
@@ -69,6 +70,12 @@ var cmdWatcher = &cli.Command{
 			Usage:       "TCP port for p2p networking",
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "TCP_PORT")),
 			DefaultText: "9090",
+		},
+		&cli.IntFlag{
+			Name:        FlagTargetPeers,
+			Usage:       "Number of target peers",
+			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "TARGET_PEERS")),
+			DefaultText: "100",
 		},
 		&cli.StringFlag{
 			Name:        FlagNetwork,
@@ -167,6 +174,9 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	}
 	if cmd.IsSet(FlagTCPPort) {
 		opts = append(opts, watcher.WithPortTCP(int(cmd.Int(FlagTCPPort))))
+	}
+	if cmd.IsSet(FlagTargetPeers) {
+		opts = append(opts, watcher.WithTargetPeers(int(cmd.Int(FlagTargetPeers))))
 	}
 	if cmd.IsSet(FlagNetwork) {
 		opts = append(opts, watcher.WithEthNetwork(cmd.String(FlagNetwork)))

@@ -23,12 +23,13 @@ import (
 )
 
 type HostOption struct {
-	listenIP   string
-	port       int
-	privateKey crypto.PrivKey
-	userAgent  string
-	rcMgr      network.ResourceManager
-	connMgr    connmgr.ConnManager
+	listenIP    string
+	port        int
+	privateKey  crypto.PrivKey
+	userAgent   string
+	targetPeers int
+	rcMgr       network.ResourceManager
+	connMgr     connmgr.ConnManager
 }
 
 type HostOptionFunc func(*HostOption)
@@ -57,6 +58,12 @@ func WithUserAgent(userAgent string) HostOptionFunc {
 	}
 }
 
+func WithTargetPeers(targetPeers int) HostOptionFunc {
+	return func(o *HostOption) {
+		o.targetPeers = targetPeers
+	}
+}
+
 func WithResourceManager(rcMgr network.ResourceManager) HostOptionFunc {
 	return func(o *HostOption) {
 		o.rcMgr = rcMgr
@@ -71,16 +78,18 @@ func WithConnMgr(connMgr connmgr.ConnManager) HostOptionFunc {
 
 type Host struct {
 	host.Host
+	targetPeers int
 }
 
 func NewHost(opts ...HostOptionFunc) (*Host, error) {
 	o := &HostOption{
-		listenIP:   "127.0.0.1",
-		port:       9090,
-		privateKey: nil,
-		userAgent:  "libp2p-host",
-		rcMgr:      nil,
-		connMgr:    connmgr.NullConnMgr{}, // TODO: need to custom connection manager?
+		listenIP:    "127.0.0.1",
+		port:        9090,
+		privateKey:  nil,
+		userAgent:   "libp2p-host",
+		targetPeers: 100,
+		rcMgr:       nil,
+		connMgr:     connmgr.NullConnMgr{}, // TODO: need to custom connection manager?
 	}
 
 	for _, opt := range opts {
@@ -141,7 +150,8 @@ func NewHost(opts ...HostOptionFunc) (*Host, error) {
 		Info("successfully created libp2p host")
 
 	return &Host{
-		libp2pHost,
+		Host:        libp2pHost,
+		targetPeers: o.targetPeers,
 	}, nil
 }
 
@@ -182,6 +192,10 @@ func (h *Host) Serve(ctx context.Context) error {
 
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (h *Host) TargetPeerCount() int {
+	return h.targetPeers
 }
 
 func (h *Host) TotalPeerCount() int {
