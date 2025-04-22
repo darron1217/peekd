@@ -29,7 +29,7 @@ const UserAgent = "peekd"
 
 type WatcherOption struct {
 	ecdsaPrivateKeyHex       string
-	ip                       string
+	listenIP                 string
 	portUDP                  int
 	portTCP                  int
 	ethNetwork               string
@@ -52,9 +52,9 @@ func WithECDSAPrivateKeyHex(ecdsaPrivateKeyHex string) WatcherOptionFunc {
 	}
 }
 
-func WithIP(ip string) WatcherOptionFunc {
+func WithListenIP(ip string) WatcherOptionFunc {
 	return func(o *WatcherOption) {
-		o.ip = ip
+		o.listenIP = ip
 	}
 }
 
@@ -138,9 +138,9 @@ type Watcher struct {
 func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	o := &WatcherOption{
 		ecdsaPrivateKeyHex: "",
-		ip:                 "127.0.0.1",
-		portUDP:            8080,
-		portTCP:            8080,
+		listenIP:           "127.0.0.1",
+		portUDP:            9090,
+		portTCP:            9090,
 		ethNetwork:         params.MainnetName,
 		nodeAlias:          "",
 		nodeRegion:         "",
@@ -183,7 +183,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	supervisor := suture.NewSimple("watcher")
 
 	localHost, err := host.NewHost(
-		host.WithIP(o.ip),
+		host.WithListenIP(o.listenIP),
 		host.WithPort(o.portTCP),
 		host.WithPrivateKey(secpKey),
 		host.WithUserAgent(UserAgent),
@@ -194,7 +194,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 
 	discovery, err := peering.NewDiscovery(
 		peering.WithPrivateKey(ecdsaKey),
-		peering.WithIP(o.ip),
+		peering.WithListenIP(o.listenIP),
 		peering.WithPortUDP(o.portUDP),
 		peering.WithPortTCP(o.portTCP),
 	)

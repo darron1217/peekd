@@ -18,7 +18,7 @@ const (
 
 	FlagLogLevel                 = "log-level"
 	FlagEcdsaPrivateKeyHex       = "ecdsa-private-key-hex"
-	FlagIp                       = "ip"
+	FlagListenIp                 = "listen-ip"
 	FlagUDPPort                  = "udp-port"
 	FlagTCPPort                  = "tcp-port"
 	FlagNetwork                  = "network"
@@ -53,8 +53,8 @@ var cmdWatcher = &cli.Command{
 			Sources: cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "ECDSA_PRIVATE_KEY_HEX")),
 		},
 		&cli.StringFlag{
-			Name:        FlagIp,
-			Usage:       "IP for p2p networking",
+			Name:        FlagListenIp,
+			Usage:       "Listen IP for p2p networking",
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "IP")),
 			DefaultText: "127.0.0.1",
 		},
@@ -62,13 +62,13 @@ var cmdWatcher = &cli.Command{
 			Name:        FlagUDPPort,
 			Usage:       "UDP port for p2p networking",
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "UDP_PORT")),
-			DefaultText: "8080",
+			DefaultText: "9090",
 		},
 		&cli.IntFlag{
 			Name:        FlagTCPPort,
 			Usage:       "TCP port for p2p networking",
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "TCP_PORT")),
-			DefaultText: "8080",
+			DefaultText: "9090",
 		},
 		&cli.StringFlag{
 			Name:        FlagNetwork,
@@ -159,8 +159,8 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	if cmd.IsSet(FlagEcdsaPrivateKeyHex) {
 		opts = append(opts, watcher.WithECDSAPrivateKeyHex(cmd.String(FlagEcdsaPrivateKeyHex)))
 	}
-	if cmd.IsSet(FlagIp) {
-		opts = append(opts, watcher.WithIP(cmd.String(FlagIp)))
+	if cmd.IsSet(FlagListenIp) {
+		opts = append(opts, watcher.WithListenIP(cmd.String(FlagListenIp)))
 	}
 	if cmd.IsSet(FlagUDPPort) {
 		opts = append(opts, watcher.WithPortUDP(int(cmd.Int(FlagUDPPort))))

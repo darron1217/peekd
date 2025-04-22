@@ -25,9 +25,9 @@ import (
 type DiscoveryOption struct {
 	privateKey *ecdsa.PrivateKey
 
-	ip      string
-	portUDP int
-	portTCP int
+	listenIP string
+	portUDP  int
+	portTCP  int
 }
 
 type DiscoveryOptionFunc func(*DiscoveryOption)
@@ -38,9 +38,9 @@ func WithPrivateKey(key *ecdsa.PrivateKey) DiscoveryOptionFunc {
 	}
 }
 
-func WithIP(ip string) DiscoveryOptionFunc {
+func WithListenIP(ip string) DiscoveryOptionFunc {
 	return func(o *DiscoveryOption) {
-		o.ip = ip
+		o.listenIP = ip
 	}
 }
 
@@ -68,9 +68,9 @@ type Discovery struct {
 func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	o := &DiscoveryOption{
 		privateKey: nil,
-		ip:         "127.0.0.1",
-		portUDP:    8080,
-		portTCP:    8080,
+		listenIP:   "127.0.0.1",
+		portUDP:    9090,
+		portTCP:    9090,
 	}
 
 	for _, opt := range opts {
@@ -96,7 +96,7 @@ func NewDiscovery(opts ...DiscoveryOptionFunc) (*Discovery, error) {
 	genesisConfig := eth.GetGenesisConfig()
 	networkConfig := eth.GetBeaconNetworkConfig()
 
-	ip := net.ParseIP(o.ip)
+	ip := net.ParseIP(o.listenIP)
 
 	forkDigest, err := forks.CreateForkDigest(genesisConfig.GenesisTime, genesisConfig.GenesisValidatorRoot)
 	if err != nil {

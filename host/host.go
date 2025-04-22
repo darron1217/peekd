@@ -23,7 +23,7 @@ import (
 )
 
 type HostOption struct {
-	ip         string
+	listenIP   string
 	port       int
 	privateKey crypto.PrivKey
 	userAgent  string
@@ -33,9 +33,9 @@ type HostOption struct {
 
 type HostOptionFunc func(*HostOption)
 
-func WithIP(ip string) HostOptionFunc {
+func WithListenIP(ip string) HostOptionFunc {
 	return func(o *HostOption) {
-		o.ip = ip
+		o.listenIP = ip
 	}
 }
 
@@ -75,8 +75,8 @@ type Host struct {
 
 func NewHost(opts ...HostOptionFunc) (*Host, error) {
 	o := &HostOption{
-		ip:         "127.0.0.1",
-		port:       8080,
+		listenIP:   "127.0.0.1",
+		port:       9090,
 		privateKey: nil,
 		userAgent:  "libp2p-host",
 		rcMgr:      nil,
@@ -106,20 +106,16 @@ func NewHost(opts ...HostOptionFunc) (*Host, error) {
 		o.rcMgr = rcMgr
 	}
 
-	var multiaddr ma.Multiaddr
-	var err error
-	parsed := net.ParseIP(o.ip)
+	parsed := net.ParseIP(o.listenIP)
 	if parsed == nil {
 		return nil, errors.New("failed to parse ip address")
 	}
-	if parsed.To16() != nil {
-		return nil, errors.New("does not support ipv6")
+	if parsed.To4() == nil {
+		return nil, errors.New("ip address should be ipv4")
 	}
-	if parsed.To4() != nil {
-		multiaddr, err = ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", o.ip, o.port))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse tcp multiaddr")
-		}
+	multiaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", o.listenIP, o.port))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse tcp multiaddr")
 	}
 
 	libp2pHost, err := libp2p.New(
