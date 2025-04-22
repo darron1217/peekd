@@ -27,3 +27,6 @@ go.work.sum
 .idea
 .vscode
 .volumes
+
+# docker compose override
+docker-compose.override.yaml
