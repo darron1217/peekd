@@ -37,6 +37,7 @@ type WatcherOption struct {
 	dbPort                   int
 	dbUser                   string
 	dbPassword               string
+	dbSecure                 bool
 	nodeAlias                string
 	nodeRegion               string
 }
@@ -121,6 +122,12 @@ func WithDBPassword(dbPassword string) WatcherOptionFunc {
 	}
 }
 
+func WithDBSecure(dbSecure bool) WatcherOptionFunc {
+	return func(o *WatcherOption) {
+		o.dbSecure = dbSecure
+	}
+}
+
 func WithNodeAlias(nodeAlias string) WatcherOptionFunc {
 	return func(o *WatcherOption) {
 		o.nodeAlias = nodeAlias
@@ -166,6 +173,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		repository.WithDBPort(o.dbPort),
 		repository.WithDBUser(o.dbUser),
 		repository.WithDBPassword(o.dbPassword),
+		repository.WithDBSecure(o.dbSecure),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize repository")

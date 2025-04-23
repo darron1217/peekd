@@ -39,6 +39,7 @@ type RepositoryOption struct {
 	dbPort     int
 	dbUser     string
 	dbPassword string
+	dbSecure   bool
 }
 
 type RepositoryOptionFunc func(*RepositoryOption)
@@ -79,6 +80,12 @@ func WithDBPassword(dbPassword string) RepositoryOptionFunc {
 	}
 }
 
+func WithDBSecure(dbSecure bool) RepositoryOptionFunc {
+	return func(o *RepositoryOption) {
+		o.dbSecure = dbSecure
+	}
+}
+
 // NewRepository creates a new repository based on the provided configuration
 func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 	o := &RepositoryOption{
@@ -88,6 +95,7 @@ func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 		dbPort:     9000,
 		dbUser:     "default",
 		dbPassword: "",
+		dbSecure:   false,
 	}
 
 	for _, opt := range opts {
@@ -102,6 +110,7 @@ func NewRepository(opts ...RepositoryOptionFunc) (Repository, error) {
 			Database: o.dbName,
 			Username: o.dbUser,
 			Password: o.dbPassword,
+			Secure:   o.dbSecure,
 		}
 
 		chRepo, err := NewClickHouseRepository(chConfig)

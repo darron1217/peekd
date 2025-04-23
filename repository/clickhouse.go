@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -16,6 +17,7 @@ type clickhouseConfig struct {
 	Database string
 	Username string
 	Password string
+	Secure   bool
 }
 
 // ClickHouseRepository implements the Repository interface for ClickHouse
@@ -40,6 +42,12 @@ func NewClickHouseRepository(cfg clickhouseConfig) (*ClickHouseRepository, error
 		Compression: &clickhouse.Compression{
 			Method: clickhouse.CompressionLZ4,
 		},
+	}
+
+	if cfg.Secure {
+		options.TLS = &tls.Config{
+			InsecureSkipVerify: true,
+		}
 	}
 
 	conn, err := clickhouse.Open(options)

@@ -32,6 +32,7 @@ const (
 	FlagDbName     = "db-name"
 	FlagDbUser     = "db-user"
 	FlagDbPassword = "db-password"
+	FlagDbSecure   = "db-secure"
 
 	// Node related flags
 	FlagNodeAlias  = "node-alias"
@@ -126,6 +127,12 @@ var cmdWatcher = &cli.Command{
 			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "DB_PASSWORD")),
 			DefaultText: "",
 		},
+		&cli.BoolFlag{
+			Name:        FlagDbSecure,
+			Usage:       "Database secure",
+			Sources:     cli.EnvVars(fmt.Sprintf("%s_%s", EnvPrefix, "DB_SECURE")),
+			DefaultText: "false",
+		},
 		&cli.StringFlag{
 			Name:        FlagNodeAlias,
 			Usage:       "Node Alias",
@@ -201,6 +208,9 @@ func launchWatcher(ctx context.Context, cmd *cli.Command) error {
 	}
 	if cmd.IsSet(FlagDbPassword) {
 		opts = append(opts, watcher.WithDBPassword(cmd.String(FlagDbPassword)))
+	}
+	if cmd.IsSet(FlagDbSecure) {
+		opts = append(opts, watcher.WithDBSecure(cmd.Bool(FlagDbSecure)))
 	}
 	if cmd.IsSet(FlagNodeAlias) {
 		opts = append(opts, watcher.WithNodeAlias(cmd.String(FlagNodeAlias)))
