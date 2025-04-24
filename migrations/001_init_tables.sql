@@ -31,4 +31,4 @@ CREATE TABLE slot_message_stats (
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMMDD(slot_start_time)
-ORDER BY (slot, topic_group, topic, node_region, node_alias);
+ORDER BY (toStartOfHour(slot_start_time), topic_group, topic, node_alias);
