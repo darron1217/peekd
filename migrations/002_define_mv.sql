@@ -26,6 +26,7 @@ CREATE MATERIALIZED VIEW slot_message_hourly_mv
 REFRESH EVERY 1 HOUR APPEND
 TO slot_message_hourly_rollup 
 AS
+WITH toStartOfHour(now()) AS target_hour
 SELECT
     toStartOfHour(slot_start_time) AS hour,
     node_region,
@@ -38,27 +39,26 @@ SELECT
     quantile(0.5)(latency_ms) AS p50_latency,
     quantile(0.9)(latency_ms) AS p90_latency,
     quantile(0.95)(latency_ms) AS p95_latency,
-    avg(seen_count) AS avg_duplication,
-    quantile(0.5)(seen_count) AS p50_duplication,
-    quantile(0.9)(seen_count) AS p90_duplication,
-    quantile(0.95)(seen_count) AS p95_duplication
+    avg(seen_count) - 1 AS avg_duplication,
+    quantile(0.5)(seen_count) - 1 AS p50_duplication,
+    quantile(0.9)(seen_count) - 1 AS p90_duplication,
+    quantile(0.95)(seen_count) - 1 AS p95_duplication
 FROM slot_message_stats
-WHERE slot_start_time >= toStartOfHour(now()) - INTERVAL 1 HOUR
-  AND slot_start_time < toStartOfHour(now())
-  AND node_alias IN (
-        SELECT node_alias
+WHERE slot_start_time >= target_hour - INTERVAL 1 HOUR
+  AND slot_start_time < target_hour
+  AND (node_alias, toStartOfHour(slot_start_time)) IN (
+        SELECT node_alias, hour
         FROM (
             SELECT
                 toStartOfHour(slot_start_time) AS hour,
                 node_alias,
-                min(first_arrival_time) AS first_seen,
-                max(first_arrival_time) AS last_seen
+                count(DISTINCT slot_start_time) AS slot_count
             FROM slot_message_stats
-            WHERE slot_start_time >= toStartOfHour(now()) - INTERVAL 1 HOUR
-              AND slot_start_time < toStartOfHour(now())
+            WHERE slot_start_time >= target_hour - INTERVAL 1 HOUR
+              AND slot_start_time < target_hour
             GROUP BY hour, node_alias
+            HAVING slot_count = 300
         )
-        WHERE first_seen <= hour + INTERVAL 30 SECOND
-          AND last_seen >= hour + INTERVAL 1 HOUR - INTERVAL 30 SECOND
     )
+  AND latency_ms < 768000
 GROUP BY hour, node_region, node_alias, topic_group, topic;
