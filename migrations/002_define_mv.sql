@@ -1,20 +1,20 @@
 -- Create the table for materialized view
 CREATE TABLE slot_message_hourly_rollup (
-    hour DateTime,
-    node_region String,
-    node_alias String,
-    topic_group String,
-    topic String,
-    sum_seen_count Float64,
-    sum_total_bytes Float64,
-    avg_latency Float64,
-    p50_latency Float64,
-    p90_latency Float64,
-    p95_latency Float64,
-    avg_duplication Float64,
-    p50_duplication Float64,
-    p90_duplication Float64,
-    p95_duplication Float64
+    hour DateTime,            -- Hourly timestamp
+    node_region String,       -- Region of the node
+    node_alias String,        -- Alias of the node
+    topic_group String,       -- Group of the topic
+    topic String,             -- Topic of the message
+    sum_seen_count Float64,   -- Sum of seen count
+    sum_total_bytes Float64,  -- Sum of total bytes
+    avg_latency Float64,      -- Average delay from slot start
+    p50_latency Float64,      -- 50th percentile delay from slot start
+    p90_latency Float64,      -- 90th percentile delay from slot start
+    p95_latency Float64,      -- 95th percentile delay from slot start
+    avg_duplication Float64,  -- Average duplication count per message
+    p50_duplication Float64,  -- 50th percentile duplication count
+    p90_duplication Float64,  -- 90th percentile duplication count
+    p95_duplication Float64   -- 95th percentile duplication count
 )
 ENGINE = ReplacingMergeTree
 PARTITION BY toYYYYMM(hour)
