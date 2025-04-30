@@ -26,7 +26,7 @@ CREATE MATERIALIZED VIEW slot_message_hourly_mv
 REFRESH EVERY 1 HOUR APPEND
 TO slot_message_hourly_rollup 
 AS
-WITH toStartOfHour(now()) AS target_hour
+WITH toStartOfHour(now() + INTERVAL 1 MINUTE) AS current_hour   -- 1 minute for the safety margin (sometimes it triggers before the hour)
 SELECT
     toStartOfHour(slot_start_time) AS hour,
     node_region,
@@ -44,8 +44,8 @@ SELECT
     quantile(0.9)(seen_count) - 1 AS p90_duplication,
     quantile(0.95)(seen_count) - 1 AS p95_duplication
 FROM slot_message_stats
-WHERE slot_start_time >= target_hour - INTERVAL 2 HOUR
-  AND slot_start_time < target_hour - INTERVAL 1 HOUR
+WHERE slot_start_time >= current_hour - INTERVAL 2 HOUR
+  AND slot_start_time < current_hour - INTERVAL 1 HOUR
   AND (node_alias, toStartOfHour(slot_start_time)) IN (
         SELECT node_alias, hour
         FROM (
@@ -54,8 +54,8 @@ WHERE slot_start_time >= target_hour - INTERVAL 2 HOUR
                 node_alias,
                 count(DISTINCT slot_start_time) AS slot_count
             FROM slot_message_stats
-            WHERE slot_start_time >= target_hour - INTERVAL 2 HOUR
-              AND slot_start_time < target_hour - INTERVAL 1 HOUR
+            WHERE slot_start_time >= current_hour - INTERVAL 2 HOUR
+              AND slot_start_time < current_hour - INTERVAL 1 HOUR
             GROUP BY hour, node_alias
             HAVING slot_count = 300
         )
