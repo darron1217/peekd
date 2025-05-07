@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
+	ethtypes "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	ssz "github.com/prysmaticlabs/fastssz"
-	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
-	ethtypes "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 )
 
 type TopicHandler = func(context.Context, *pubsub.Message) error

@@ -7,6 +7,7 @@ import (
 
 	"github.com/a41-official/peekd/eth"
 
+	"github.com/OffchainLabs/prysm/v6/config/params"
 	"github.com/a41-official/peekd/gossip"
 	"github.com/a41-official/peekd/host"
 	"github.com/a41-official/peekd/peering"
@@ -17,7 +18,6 @@ import (
 	gcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/thejerf/suture/v4"
 )
 

@@ -1,11 +1,11 @@
 package gossip
 
 import (
+	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
 	"github.com/a41-official/peekd/eth"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
 	"log/slog"
 	"math"
 	"strings"

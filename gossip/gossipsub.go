@@ -9,17 +9,17 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
+	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p/encoder"
+	"github.com/OffchainLabs/prysm/v6/config/params"
+	ethmath "github.com/OffchainLabs/prysm/v6/math"
+	"github.com/OffchainLabs/prysm/v6/network/forks"
 	"github.com/a41-official/peekd/eth"
 	"github.com/a41-official/peekd/host"
 	"github.com/a41-official/peekd/processor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubpb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p"
-	"github.com/prysmaticlabs/prysm/v5/beacon-chain/p2p/encoder"
-	"github.com/prysmaticlabs/prysm/v5/config/params"
-	ethmath "github.com/prysmaticlabs/prysm/v5/math"
-	"github.com/prysmaticlabs/prysm/v5/network/forks"
 	"github.com/thejerf/suture/v4"
 )
 
