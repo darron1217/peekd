@@ -99,8 +99,10 @@ func GetForkVersion(epoch primitives.Epoch) [4]byte {
 		return [4]byte(beaconConfig.CapellaForkVersion)
 	case epoch < beaconConfig.ElectraForkEpoch:
 		return [4]byte(beaconConfig.DenebForkVersion)
+	case epoch < beaconConfig.FuluForkEpoch:
+		return [4]byte(beaconConfig.ElectraForkVersion)
 	default:
-		return [4]byte(beaconConfig.DenebForkVersion)
+		return [4]byte(beaconConfig.ElectraForkVersion)
 	}
 }
 
