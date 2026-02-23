@@ -1,4 +1,4 @@
-module github.com/a41-official/peekd
+module github.com/post-pectra/peekd
 
 go 1.24.1
 

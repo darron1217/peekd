@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/OffchainLabs/prysm/v6/config/params"
-	"github.com/a41-official/peekd/watcher"
 	"github.com/pkg/errors"
+	"github.com/post-pectra/peekd/watcher"
 	"github.com/urfave/cli/v3"
 )
 

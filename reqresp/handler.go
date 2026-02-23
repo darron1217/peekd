@@ -1,18 +1,19 @@
 package reqresp
 
 import (
+	"io"
+	"log/slog"
+	"time"
+
 	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
 	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p/types"
 	"github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
 	"github.com/OffchainLabs/prysm/v6/consensus-types/wrapper"
 	ethtypes "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
-	"github.com/a41-official/peekd/eth"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/pkg/errors"
+	"github.com/post-pectra/peekd/eth"
 	ssz "github.com/prysmaticlabs/fastssz"
-	"io"
-	"log/slog"
-	"time"
 )
 
 func mappingTopicToHandler(topic string) network.StreamHandler {

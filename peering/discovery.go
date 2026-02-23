@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"fmt"
+	"net"
+
 	"github.com/OffchainLabs/prysm/v6/network/forks"
 	pb "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
 	"github.com/OffchainLabs/prysm/v6/time/slots"
-	"github.com/a41-official/peekd/eth"
 	gcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -17,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-	"net"
+	"github.com/post-pectra/peekd/eth"
 
 	"log/slog"
 )

@@ -14,12 +14,12 @@ import (
 	"github.com/OffchainLabs/prysm/v6/config/params"
 	ethmath "github.com/OffchainLabs/prysm/v6/math"
 	"github.com/OffchainLabs/prysm/v6/network/forks"
-	"github.com/a41-official/peekd/eth"
-	"github.com/a41-official/peekd/host"
-	"github.com/a41-official/peekd/processor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubpb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/pkg/errors"
+	"github.com/post-pectra/peekd/eth"
+	"github.com/post-pectra/peekd/host"
+	"github.com/post-pectra/peekd/processor"
 	"github.com/thejerf/suture/v4"
 )
 

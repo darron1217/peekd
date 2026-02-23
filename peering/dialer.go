@@ -2,11 +2,12 @@ package peering
 
 import (
 	"context"
-	"github.com/a41-official/peekd/host"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
 	"log/slog"
 	"time"
+
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
+	"github.com/post-pectra/peekd/host"
 )
 
 const ConnTimeout = 2 * time.Second

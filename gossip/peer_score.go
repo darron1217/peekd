@@ -1,16 +1,17 @@
 package gossip
 
 import (
-	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
-	"github.com/a41-official/peekd/eth"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
 	"log/slog"
 	"math"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
+	"github.com/post-pectra/peekd/eth"
 )
 
 const (

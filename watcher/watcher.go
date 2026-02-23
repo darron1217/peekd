@@ -5,19 +5,19 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 
-	"github.com/a41-official/peekd/eth"
+	"github.com/post-pectra/peekd/eth"
 
 	"github.com/OffchainLabs/prysm/v6/config/params"
-	"github.com/a41-official/peekd/gossip"
-	"github.com/a41-official/peekd/host"
-	"github.com/a41-official/peekd/peering"
-	"github.com/a41-official/peekd/processor"
-	"github.com/a41-official/peekd/repository"
-	"github.com/a41-official/peekd/reqresp"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	gcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
+	"github.com/post-pectra/peekd/gossip"
+	"github.com/post-pectra/peekd/host"
+	"github.com/post-pectra/peekd/peering"
+	"github.com/post-pectra/peekd/processor"
+	"github.com/post-pectra/peekd/repository"
+	"github.com/post-pectra/peekd/reqresp"
 	"github.com/thejerf/suture/v4"
 )
 
