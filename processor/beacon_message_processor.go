@@ -17,10 +17,13 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	"github.com/post-pectra/peekd/eth"
-	"github.com/post-pectra/peekd/host"
 	"github.com/post-pectra/peekd/repository"
 	ssz "github.com/prysmaticlabs/fastssz"
 )
+
+type PeerCounter interface {
+	TotalPeerCount() int
+}
 
 // SlotCache stores message records for a specific slot
 type SlotCache struct {
@@ -32,7 +35,7 @@ type SlotCache struct {
 type BeaconMessageProcessor struct {
 	enc          encoder.NetworkEncoding
 	repo         repository.Repository
-	host         *host.Host
+	peerCounter  PeerCounter
 	beaconConfig *params.BeaconChainConfig
 	genesisTime  time.Time
 	nodeAlias    string
@@ -49,10 +52,10 @@ type BeaconMessageProcessor struct {
 }
 
 type BeaconMessageProcessorOption struct {
-	repo       repository.Repository
-	nodeAlias  string
-	nodeRegion string
-	host       *host.Host
+	repo        repository.Repository
+	nodeAlias   string
+	nodeRegion  string
+	peerCounter PeerCounter
 }
 
 type BeaconMessageProcessorOptionFunc func(*BeaconMessageProcessorOption)
@@ -75,17 +78,17 @@ func WithNodeRegion(nodeRegion string) BeaconMessageProcessorOptionFunc {
 	}
 }
 
-func WithHost(host *host.Host) BeaconMessageProcessorOptionFunc {
+func WithPeerCounter(pc PeerCounter) BeaconMessageProcessorOptionFunc {
 	return func(o *BeaconMessageProcessorOption) {
-		o.host = host
+		o.peerCounter = pc
 	}
 }
 
 func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *BeaconMessageProcessor {
 	o := &BeaconMessageProcessorOption{
-		nodeAlias:  "",
-		nodeRegion: "",
-		host:       nil,
+		nodeAlias:   "",
+		nodeRegion:  "",
+		peerCounter: nil,
 	}
 
 	for _, opt := range opts {
@@ -94,7 +97,7 @@ func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *Beacon
 
 	processor := &BeaconMessageProcessor{
 		repo:          o.repo,
-		host:          o.host,
+		peerCounter:   o.peerCounter,
 		nodeAlias:     o.nodeAlias,
 		nodeRegion:    o.nodeRegion,
 		enc:           encoder.SszNetworkEncoder{},
@@ -220,7 +223,7 @@ func (p *BeaconMessageProcessor) processGeneralMessageMetadata(
 		Topic:         messageType,
 		NodeRegion:    p.nodeRegion,
 		NodeAlias:     p.nodeAlias,
-		NodePeerCount: uint32(p.host.TotalPeerCount()),
+		NodePeerCount: uint32(p.peerCounter.TotalPeerCount()),
 		MessageID:     metadata.MsgID,
 		SizeBytes:     uint32(metadata.MsgSize),
 	}
@@ -271,7 +274,7 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 			Topic:            messageType,
 			NodeRegion:       p.nodeRegion,
 			NodeAlias:        p.nodeAlias,
-			NodePeerCount:    uint32(p.host.TotalPeerCount()),
+			NodePeerCount:    uint32(p.peerCounter.TotalPeerCount()),
 			MessageID:        metadata.MsgID,
 			SlotStartTime:    slotStartTime,
 			FirstArrivalTime: metadata.MsgArrival,
