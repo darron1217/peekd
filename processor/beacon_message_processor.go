@@ -46,10 +46,6 @@ type BeaconMessageProcessor struct {
 
 	// Channel to notify about new messages without blocking
 	messageNotify chan struct{}
-
-	// Control channels
-	done    chan struct{}
-	stopped bool
 }
 
 type BeaconMessageProcessorOption struct {
@@ -107,12 +103,7 @@ func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *Beacon
 		slotCaches:    make(map[uint64]*SlotCache),
 		seenCounts:    make(map[string]uint32),
 		messageNotify: make(chan struct{}, 100), // Buffer to prevent blocking
-		done:          make(chan struct{}),
 	}
-
-	// Start the background processor
-	go processor.processLoop()
-
 	slog.Info("successfully created beacon message processor")
 	return processor
 }
@@ -342,20 +333,20 @@ func (p *BeaconMessageProcessor) getSlotDuration() time.Duration {
 	return time.Duration(p.beaconConfig.SecondsPerSlot) * time.Second
 }
 
-// processLoop runs in the background to periodically flush completed slots to the database
-func (p *BeaconMessageProcessor) processLoop() {
-	// FlushInterval is how often to check for completed slots
-	flushInterval := time.Duration(p.beaconConfig.SecondsPerSlot) * time.Second
+// Runs in the background to periodically flush completed slots to the database.
+func (p *BeaconMessageProcessor) Serve(ctx context.Context) error {
+	slog.Info("starting beacon message processor service")
+	defer slog.Info("stopping beacon message processor service")
 
+	flushInterval := time.Duration(p.beaconConfig.SecondsPerSlot) * time.Second
 	ticker := time.NewTicker(flushInterval)
 	defer ticker.Stop()
-
 	for {
 		select {
-		case <-p.done:
+		case <-ctx.Done():
 			// Final flush before shutdown
 			p.flushCompletedSlots()
-			return
+			return nil
 		case <-ticker.C:
 			// Regular interval check
 			p.flushCompletedSlots()
@@ -452,20 +443,6 @@ func (p *BeaconMessageProcessor) saveToRepository(stats []*repository.SlotMessag
 	).Info("saved message batch to repository")
 
 	return nil
-}
-
-// Stop stops the processor and flushes any remaining data
-func (p *BeaconMessageProcessor) Stop() {
-	p.mu.Lock()
-	if p.stopped {
-		p.mu.Unlock()
-		return
-	}
-	p.stopped = true
-	p.mu.Unlock()
-
-	// Signal the processor to stop
-	close(p.done)
 }
 
 // TODO: optimize string search

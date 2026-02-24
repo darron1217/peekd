@@ -247,6 +247,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	supervisor.Add(dialer) // TODO: need to concurrent dial?
 	supervisor.Add(gossipSub)
 	supervisor.Add(reqResp)
+	supervisor.Add(messageProcessor)
 
 	return &Watcher{
 		supervisor: supervisor,
