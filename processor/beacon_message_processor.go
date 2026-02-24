@@ -44,8 +44,7 @@ type BeaconMessageProcessor struct {
 	mu         sync.RWMutex
 	slotCaches map[uint64]*SlotCache // slot -> cache
 
-	seenMu     sync.Mutex
-	seenCounts map[string]uint32 // msg_id -> seen_count
+	seenCounter *SeenCounter
 
 	// Channel to notify about new messages without blocking
 	messageNotify chan struct{}
@@ -104,7 +103,7 @@ func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *Beacon
 		beaconConfig:  eth.GetBeaconChainConfig(),
 		genesisTime:   eth.GetGenesisConfig().GenesisTime,
 		slotCaches:    make(map[uint64]*SlotCache),
-		seenCounts:    make(map[string]uint32),
+		seenCounter:   NewSeenCounter(),
 		messageNotify: make(chan struct{}, 100), // Buffer to prevent blocking
 	}
 	slog.Info("successfully created beacon message processor")
@@ -382,7 +381,7 @@ func (p *BeaconMessageProcessor) flushCompletedSlots() {
 		stats := p.prepareAndRemoveSlot(slot)
 		if len(stats) > 0 {
 			for _, stat := range stats {
-				seenCount, ok := p.popSeenCount(stat.MessageID)
+				seenCount, ok := p.seenCounter.Pop(stat.MessageID)
 				if ok {
 					stat.SeenCount = seenCount
 				} else {
@@ -475,23 +474,6 @@ func parseEth2Topic(topic string) (string, string) {
 	return parts[2], parts[3]
 }
 
-func (p *BeaconMessageProcessor) popSeenCount(msgID string) (uint32, bool) {
-	p.seenMu.Lock()
-	defer p.seenMu.Unlock()
-
-	value, ok := p.seenCounts[msgID]
-	if ok {
-		delete(p.seenCounts, msgID)
-		return value, true
-	}
-
-	return 0, false
-}
-
 func (p *BeaconMessageProcessor) IncreaseSeenCountByRawID(msgIDRaw string) {
-	msgID := hex.EncodeToString([]byte(msgIDRaw))
-
-	p.seenMu.Lock()
-	p.seenCounts[msgID]++
-	p.seenMu.Unlock()
+	p.seenCounter.IncreaseByRawID(msgIDRaw)
 }
