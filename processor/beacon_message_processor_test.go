@@ -59,7 +59,7 @@ func newTestProcessor(pc PeerCounter, repo repository.Repository) *BeaconMessage
 		genesisTime:   time.Unix(1606824023, 0),
 		nodeAlias:     "test-node",
 		nodeRegion:    "test-region",
-		slotCaches:    make(map[uint64]*SlotCache),
+		slotCache:     NewSlotCacheStore(),
 		seenCounter:   NewSeenCounter(),
 		extractors:    newSlotExtractorRegistry(),
 		messageNotify: make(chan struct{}, 100),
@@ -83,16 +83,12 @@ func TestProcessSlotMessageMetadata_PeerCount(t *testing.T) {
 
 	p.processSlotMessageMetadata(metadata)
 
-	cache, ok := p.slotCaches[100]
-	if !ok {
-		t.Fatal("expected slot cache for slot 100")
+	stats := p.slotCache.DrainSlot(100)
+	if len(stats) != 1 {
+		t.Fatalf("expected 1 stat for slot 100, got %d", len(stats))
 	}
-	record, ok := cache.MessageStats["test-msg-001"]
-	if !ok {
-		t.Fatal("expected message stats for test-msg-001")
-	}
-	if record.NodePeerCount != 42 {
-		t.Errorf("expected NodePeerCount=42, got %d", record.NodePeerCount)
+	if stats[0].NodePeerCount != 42 {
+		t.Errorf("expected NodePeerCount=42, got %d", stats[0].NodePeerCount)
 	}
 }
 
@@ -114,8 +110,11 @@ func TestProcessSlotMessageMetadata_BasicFields(t *testing.T) {
 
 	p.processSlotMessageMetadata(metadata)
 
-	cache := p.slotCaches[200]
-	record := cache.MessageStats["test-msg-002"]
+	stats := p.slotCache.DrainSlot(200)
+	if len(stats) != 1 {
+		t.Fatalf("expected 1 stat for slot 200, got %d", len(stats))
+	}
+	record := stats[0]
 
 	if record.Slot != 200 {
 		t.Errorf("expected Slot=200, got %d", record.Slot)
@@ -164,9 +163,9 @@ func TestProcessSlotMessageMetadata_DuplicateMessage(t *testing.T) {
 	p.processSlotMessageMetadata(metadata)
 	p.processSlotMessageMetadata(metadata)
 
-	cache := p.slotCaches[100]
-	if len(cache.MessageStats) != 1 {
-		t.Errorf("expected 1 message stat for duplicate msg, got %d", len(cache.MessageStats))
+	stats := p.slotCache.DrainSlot(100)
+	if len(stats) != 1 {
+		t.Errorf("expected 1 message stat for duplicate msg, got %d", len(stats))
 	}
 }
 
