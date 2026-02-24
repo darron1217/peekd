@@ -427,14 +427,8 @@ func (p *BeaconMessageProcessor) saveToRepository(stats []*repository.SlotMessag
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Save the batch
-	err := p.repo.SaveSlotMessageStatsMulti(ctx, stats)
-	if err != nil {
-		slog.With("error", err).
-			With("slot", stats[0].Slot).
-			With("message_count", len(stats)).
-			Error("failed to save slot message stats batch")
-		return err
+	if err := p.repo.SaveSlotMessageStatsMulti(ctx, stats); err != nil {
+		return errors.Wrap(err, "failed to save slot message stats batch")
 	}
 
 	slog.With(

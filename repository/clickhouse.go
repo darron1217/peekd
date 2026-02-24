@@ -8,6 +8,7 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/pkg/errors"
 )
 
 // clickhouseConfig holds ClickHouse connection configuration
@@ -52,12 +53,11 @@ func NewClickHouseRepository(cfg clickhouseConfig) (*ClickHouseRepository, error
 
 	conn, err := clickhouse.Open(options)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to ClickHouse: %w", err)
+		return nil, errors.Wrap(err, "failed to connect to ClickHouse")
 	}
 
-	// Test connection
 	if err := conn.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
+		return nil, errors.Wrap(err, "failed to ping ClickHouse")
 	}
 
 	return &ClickHouseRepository{
@@ -68,7 +68,7 @@ func NewClickHouseRepository(cfg clickhouseConfig) (*ClickHouseRepository, error
 // SaveGeneralMessageHistory saves a general message history record to the database
 func (r *ClickHouseRepository) SaveGeneralMessageHistory(ctx context.Context, history *GeneralMessageHistory) error {
 	if history == nil {
-		return fmt.Errorf("history is nil")
+		return errors.New("history is nil")
 	}
 
 	query := `
@@ -98,7 +98,7 @@ func (r *ClickHouseRepository) SaveGeneralMessageHistory(ctx context.Context, hi
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to save general message history: %w", err)
+		return errors.Wrap(err, "failed to save general message history")
 	}
 
 	return nil
@@ -112,7 +112,7 @@ func (r *ClickHouseRepository) SaveSlotMessageStatsMulti(ctx context.Context, st
 
 	batch, err := r.conn.PrepareBatch(ctx, "INSERT INTO slot_message_stats")
 	if err != nil {
-		return fmt.Errorf("failed to prepare batch: %w", err)
+		return errors.Wrap(err, "failed to prepare batch")
 	}
 
 	for _, stat := range stats {
@@ -132,12 +132,12 @@ func (r *ClickHouseRepository) SaveSlotMessageStatsMulti(ctx context.Context, st
 			stat.SeenCount,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to append message stats: %w", err)
+			return errors.Wrap(err, "failed to append message stats")
 		}
 	}
 
 	if err := batch.Send(); err != nil {
-		return fmt.Errorf("failed to send batch: %w", err)
+		return errors.Wrap(err, "failed to send batch")
 	}
 
 	return nil

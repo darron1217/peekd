@@ -69,7 +69,9 @@ func (gs *GossipSub) beaconBlockHandler(ctx context.Context, msg *pubsub.Message
 		return errors.New("unknown fork version for handling block")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, block)
+	if err := gs.messageProcessor.Process(ctx, msg, block); err != nil {
+		return errors.Wrap(err, "failed to process block message")
+	}
 
 	slog.With("block", block).
 		Debug("handled block from gossip")
@@ -87,7 +89,9 @@ func (gs *GossipSub) blobSidecarHandler(ctx context.Context, msg *pubsub.Message
 		return errors.New("unknown fork version for handling blob")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, blob)
+	if err := gs.messageProcessor.Process(ctx, msg, blob); err != nil {
+		return errors.Wrap(err, "failed to process blob message")
+	}
 
 	slog.With("blob", blob).
 		Debug("handled blob from gossip")
@@ -110,7 +114,9 @@ func (gs *GossipSub) beaconAggregateAndProofHandler(ctx context.Context, msg *pu
 		return errors.New("unknown fork version for handling aggregate proof")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, aggProof)
+	if err := gs.messageProcessor.Process(ctx, msg, aggProof); err != nil {
+		return errors.Wrap(err, "failed to process aggregate proof message")
+	}
 
 	slog.With("aggregate_proof", aggProof).
 		Debug("handled aggregate proof from gossip")
@@ -133,10 +139,12 @@ func (gs *GossipSub) beaconAttestationHandler(ctx context.Context, msg *pubsub.M
 		return errors.New("unknown fork version for handling attestation")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, att)
+	if err := gs.messageProcessor.Process(ctx, msg, att); err != nil {
+		return errors.Wrap(err, "failed to process attestation message")
+	}
 
 	slog.With("attestation", att).
-		Debug("handled aggregate proof from gossip")
+		Debug("handled attestation from gossip")
 	return nil
 }
 
@@ -155,7 +163,9 @@ func (gs *GossipSub) syncCommitteeContributionAndProofHandler(ctx context.Contex
 		return errors.New("unknown fork version for handling contribution proof")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, ctrProof)
+	if err := gs.messageProcessor.Process(ctx, msg, ctrProof); err != nil {
+		return errors.Wrap(err, "failed to process contribution proof message")
+	}
 
 	slog.With("contribution_proof", ctrProof).
 		Debug("handled contribution proof from gossip")
@@ -177,7 +187,9 @@ func (gs *GossipSub) syncCommitteeHandler(ctx context.Context, msg *pubsub.Messa
 		return errors.New("unknown fork version for handling sync committee")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, sync)
+	if err := gs.messageProcessor.Process(ctx, msg, sync); err != nil {
+		return errors.Wrap(err, "failed to process sync committee message")
+	}
 
 	slog.With("sync_committee", sync).
 		Debug("handled sync committee from gossip")
@@ -199,7 +211,9 @@ func (gs *GossipSub) proposerSlashingHandler(ctx context.Context, msg *pubsub.Me
 		return errors.New("unknown fork version for handling proposer slashing")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, pSlash)
+	if err := gs.messageProcessor.Process(ctx, msg, pSlash); err != nil {
+		return errors.Wrap(err, "failed to process proposer slashing message")
+	}
 
 	slog.With("proposer_slashing", pSlash).
 		Debug("handled proposer slashing from gossip")
@@ -223,7 +237,9 @@ func (gs *GossipSub) attesterSlashingHandler(ctx context.Context, msg *pubsub.Me
 		return errors.New("unknown fork version for handling attester slashing")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, aSlash)
+	if err := gs.messageProcessor.Process(ctx, msg, aSlash); err != nil {
+		return errors.Wrap(err, "failed to process attester slashing message")
+	}
 
 	slog.With("attester_slashing", aSlash).
 		Debug("handled attester slashing from gossip")
@@ -245,7 +261,9 @@ func (gs *GossipSub) blsToExecutionChangeHandler(ctx context.Context, msg *pubsu
 		return errors.New("unknown fork version for handling bls execution change")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, blsExec)
+	if err := gs.messageProcessor.Process(ctx, msg, blsExec); err != nil {
+		return errors.Wrap(err, "failed to process bls execution change message")
+	}
 
 	slog.With("bls_execution_change", blsExec).
 		Debug("handled bls execution change from gossip")
@@ -267,7 +285,9 @@ func (gs *GossipSub) voluntaryExitHandler(ctx context.Context, msg *pubsub.Messa
 		return errors.New("unknown fork version for handling voluntary exit")
 	}
 
-	gs.messageProcessor.Process(ctx, msg, exit)
+	if err := gs.messageProcessor.Process(ctx, msg, exit); err != nil {
+		return errors.Wrap(err, "failed to process voluntary exit message")
+	}
 
 	slog.With("voluntary_exit", exit).
 		Debug("handled voluntary exit from gossip")
