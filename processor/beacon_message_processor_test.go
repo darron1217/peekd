@@ -61,6 +61,7 @@ func newTestProcessor(pc PeerCounter, repo repository.Repository) *BeaconMessage
 		nodeRegion:    "test-region",
 		slotCaches:    make(map[uint64]*SlotCache),
 		seenCounter:   NewSeenCounter(),
+		extractors:    newSlotExtractorRegistry(),
 		messageNotify: make(chan struct{}, 100),
 	}
 }

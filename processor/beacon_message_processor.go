@@ -3,7 +3,6 @@ package processor
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -13,7 +12,6 @@ import (
 	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p/encoder"
 	"github.com/OffchainLabs/prysm/v6/config/params"
 	"github.com/OffchainLabs/prysm/v6/consensus-types/primitives"
-	ethtypes "github.com/OffchainLabs/prysm/v6/proto/prysm/v1alpha1"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	"github.com/post-pectra/peekd/eth"
@@ -45,6 +43,7 @@ type BeaconMessageProcessor struct {
 	slotCaches map[uint64]*SlotCache // slot -> cache
 
 	seenCounter *SeenCounter
+	extractors  *slotExtractorRegistry
 
 	// Channel to notify about new messages without blocking
 	messageNotify chan struct{}
@@ -104,6 +103,7 @@ func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *Beacon
 		genesisTime:   eth.GetGenesisConfig().GenesisTime,
 		slotCaches:    make(map[uint64]*SlotCache),
 		seenCounter:   NewSeenCounter(),
+		extractors:    newSlotExtractorRegistry(),
 		messageNotify: make(chan struct{}, 100), // Buffer to prevent blocking
 	}
 	slog.Info("successfully created beacon message processor")
@@ -115,95 +115,18 @@ func (p *BeaconMessageProcessor) Process(ctx context.Context, msg *pubsub.Messag
 		return errors.Wrap(err, "failed to decode gossip message")
 	}
 
-	switch d := dst.(type) {
-	// --- global topics ---
+	kind, slot, err := p.extractors.extract(dst)
+	if err != nil {
+		return err
+	}
 
-	// beacon_block
-	case *ethtypes.SignedBeaconBlock:
-		metadata := p.newSlotMetadata(msg, d.Block.Slot)
+	switch kind {
+	case slotMessage:
+		metadata := p.newSlotMetadata(msg, slot)
 		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SignedBeaconBlockAltair:
-		metadata := p.newSlotMetadata(msg, d.Block.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SignedBeaconBlockBellatrix:
-		metadata := p.newSlotMetadata(msg, d.Block.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SignedBeaconBlockCapella:
-		metadata := p.newSlotMetadata(msg, d.Block.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SignedBeaconBlockDeneb:
-		metadata := p.newSlotMetadata(msg, d.Block.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SignedBeaconBlockElectra:
-		metadata := p.newSlotMetadata(msg, d.Block.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	// beacon_aggregate_and_proof
-	case *ethtypes.SignedAggregateAttestationAndProof:
-		metadata := p.newSlotMetadata(msg, d.Message.Aggregate.Data.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SignedAggregateAttestationAndProofElectra:
-		metadata := p.newSlotMetadata(msg, d.Message.Aggregate.Data.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	// beacon_sync_committee_contribution_and_proof
-	case *ethtypes.SignedContributionAndProof:
-		metadata := p.newSlotMetadata(msg, d.Message.Contribution.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	// proposer_slashing
-	case *ethtypes.ProposerSlashing:
+	case generalMessage:
 		metadata := p.newGeneralMetadata(msg)
 		p.processGeneralMessageMetadata(metadata)
-
-	// attester_slashing
-	case *ethtypes.AttesterSlashing:
-		metadata := p.newGeneralMetadata(msg)
-		p.processGeneralMessageMetadata(metadata)
-	case *ethtypes.AttesterSlashingElectra:
-		metadata := p.newGeneralMetadata(msg)
-		p.processGeneralMessageMetadata(metadata)
-
-	// voluntary_exit
-	case *ethtypes.VoluntaryExit:
-		metadata := p.newGeneralMetadata(msg)
-		p.processGeneralMessageMetadata(metadata)
-
-	// bls to execution change
-	case *ethtypes.BLSToExecutionChange:
-		metadata := p.newGeneralMetadata(msg)
-		p.processGeneralMessageMetadata(metadata)
-
-	// --- subnet topics ---
-
-	// beacon_attestation
-	case *ethtypes.Attestation:
-		metadata := p.newSlotMetadata(msg, d.Data.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.AttestationElectra:
-		metadata := p.newSlotMetadata(msg, d.Data.Slot)
-		p.processSlotMessageMetadata(metadata)
-	case *ethtypes.SingleAttestation:
-		metadata := p.newSlotMetadata(msg, d.Data.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	// sync committee message
-	case *ethtypes.SyncCommitteeMessage:
-		metadata := p.newSlotMetadata(msg, d.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	// sync committee contribution
-	case *ethtypes.SyncCommitteeContribution:
-		metadata := p.newSlotMetadata(msg, d.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	// blob sidecar
-	case *ethtypes.BlobSidecar:
-		metadata := p.newSlotMetadata(msg, d.SignedBlockHeader.Header.Slot)
-		p.processSlotMessageMetadata(metadata)
-
-	default:
-		return fmt.Errorf("unsupported message type: %T", dst)
 	}
 
 	return nil
