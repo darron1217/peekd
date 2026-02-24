@@ -219,7 +219,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 	// initialize message processor
 	messageProcessor := processor.NewBeaconMessageProcessor(
 		processor.WithRepository(repo),
-		processor.WithHost(localHost),
+		processor.WithPeerCounter(localHost),
 		processor.WithNodeAlias(o.nodeAlias),
 		processor.WithNodeRegion(o.nodeRegion),
 	)
