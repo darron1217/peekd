@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/OffchainLabs/prysm/v6/beacon-chain/p2p"
@@ -39,9 +38,7 @@ type BeaconMessageProcessor struct {
 	nodeAlias    string
 	nodeRegion   string
 
-	mu         sync.RWMutex
-	slotCaches map[uint64]*SlotCache // slot -> cache
-
+	slotCache   *SlotCacheStore
 	seenCounter *SeenCounter
 	extractors  *slotExtractorRegistry
 
@@ -101,7 +98,7 @@ func NewBeaconMessageProcessor(opts ...BeaconMessageProcessorOptionFunc) *Beacon
 		enc:           encoder.SszNetworkEncoder{},
 		beaconConfig:  eth.GetBeaconChainConfig(),
 		genesisTime:   eth.GetGenesisConfig().GenesisTime,
-		slotCaches:    make(map[uint64]*SlotCache),
+		slotCache:     NewSlotCacheStore(),
 		seenCounter:   NewSeenCounter(),
 		extractors:    newSlotExtractorRegistry(),
 		messageNotify: make(chan struct{}, 100), // Buffer to prevent blocking
@@ -171,50 +168,32 @@ func (p *BeaconMessageProcessor) processSlotMessageMetadata(
 
 	slog.Debug("processing slot message metadata", "topic", metadata.Topic, "msg_id", metadata.MsgID, "msg_size", metadata.MsgSize, "msg_delay_in_slot", metadata.MsgDelayInSlot, "slot", metadata.Slot)
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	slotStartTime := p.genesisTime.Add((time.Duration(metadata.Slot) * time.Second * time.Duration(p.beaconConfig.SecondsPerSlot)))
+	forkVersion, messageType := parseEth2Topic(metadata.Topic)
 
-	// Get or create the slot cache
-	cache, exists := p.slotCaches[metadata.Slot]
-	if !exists {
-		cache = &SlotCache{
-			Slot:         metadata.Slot,
-			MessageStats: make(map[string]*repository.SlotMessageStats),
-		}
-		p.slotCaches[metadata.Slot] = cache
+	record := &repository.SlotMessageStats{
+		Slot:             metadata.Slot,
+		TopicGroup:       TopicToTopicGroup(metadata.Topic),
+		ForkVersion:      forkVersion,
+		Topic:            messageType,
+		NodeRegion:       p.nodeRegion,
+		NodeAlias:        p.nodeAlias,
+		NodePeerCount:    uint32(p.peerCounter.TotalPeerCount()),
+		MessageID:        metadata.MsgID,
+		SlotStartTime:    slotStartTime,
+		FirstArrivalTime: metadata.MsgArrival,
+		LatencyMS:        uint32(metadata.MsgDelayInSlot.Milliseconds()),
+		SizeBytes:        uint32(metadata.MsgSize),
 	}
 
-	// Get or create the message record
-	record, exists := cache.MessageStats[metadata.MsgID]
-	if !exists {
-		slotStartTime := p.genesisTime.Add((time.Duration(metadata.Slot) * time.Second * time.Duration(p.beaconConfig.SecondsPerSlot)))
-		forkVersion, messageType := parseEth2Topic(metadata.Topic)
-		record = &repository.SlotMessageStats{
-			Slot:             metadata.Slot,
-			TopicGroup:       TopicToTopicGroup(metadata.Topic),
-			ForkVersion:      forkVersion,
-			Topic:            messageType,
-			NodeRegion:       p.nodeRegion,
-			NodeAlias:        p.nodeAlias,
-			NodePeerCount:    uint32(p.peerCounter.TotalPeerCount()),
-			MessageID:        metadata.MsgID,
-			SlotStartTime:    slotStartTime,
-			FirstArrivalTime: metadata.MsgArrival,
-			LatencyMS:        uint32(metadata.MsgDelayInSlot.Milliseconds()),
-			SizeBytes:        uint32(metadata.MsgSize),
-		}
-		cache.MessageStats[metadata.MsgID] = record
-	} else {
+	if !p.slotCache.Add(metadata.Slot, metadata.MsgID, record) {
 		slog.Error("libp2p pubsub message cannot be processed twice", "msg_id", metadata.MsgID)
-		// TODO: handle this as a fatal error
 	}
 
 	// Notify the processor without blocking
 	select {
 	case p.messageNotify <- struct{}{}:
-		// Successfully notified
 	default:
-		// Channel is full, but that's okay - the regular timer will catch up
 	}
 
 	return nil
@@ -284,62 +263,28 @@ func (p *BeaconMessageProcessor) Serve(ctx context.Context) error {
 
 // flushCompletedSlots identifies completed slots and saves them to the database
 func (p *BeaconMessageProcessor) flushCompletedSlots() {
-	now := time.Now()
-	slotDuration := p.getSlotDuration()
-	currentSlot := uint64(now.Unix()) / uint64(slotDuration.Seconds())
+	currentSlot := uint64(time.Now().Unix()) / uint64(p.getSlotDuration().Seconds())
 
-	// Lock for reading the map and identifying slots to process
-	p.mu.RLock()
-	var slotsToFlush []uint64
-	for slot, _ := range p.slotCaches {
-		// Flush slots that are at least 2 slots old or haven't been modified in a while
-		if slot < currentSlot-1 {
-			slotsToFlush = append(slotsToFlush, slot)
+	for _, slot := range p.slotCache.CompletedSlots(currentSlot) {
+		stats := p.slotCache.DrainSlot(slot)
+		if len(stats) == 0 {
+			continue
 		}
-	}
-	p.mu.RUnlock()
 
-	// Process each slot
-	for _, slot := range slotsToFlush {
-		stats := p.prepareAndRemoveSlot(slot)
-		if len(stats) > 0 {
-			for _, stat := range stats {
-				seenCount, ok := p.seenCounter.Pop(stat.MessageID)
-				if ok {
-					stat.SeenCount = seenCount
-				} else {
-					stat.SeenCount = 1
-				}
-			}
-			if err := p.saveToRepository(stats); err != nil {
-				slog.With("error", err).
-					With("slot", stats[0].Slot).
-					Error("failed to save slot message stats batch")
+		for _, stat := range stats {
+			seenCount, ok := p.seenCounter.Pop(stat.MessageID)
+			if ok {
+				stat.SeenCount = seenCount
+			} else {
+				stat.SeenCount = 1
 			}
 		}
+		if err := p.saveToRepository(stats); err != nil {
+			slog.With("error", err).
+				With("slot", stats[0].Slot).
+				Error("failed to save slot message stats batch")
+		}
 	}
-}
-
-// prepareAndRemoveSlot prepares stats entities and removes the slot from cache
-func (p *BeaconMessageProcessor) prepareAndRemoveSlot(slot uint64) []*repository.SlotMessageStats {
-	p.mu.Lock()
-	cache, exists := p.slotCaches[slot]
-	if !exists {
-		p.mu.Unlock()
-		return nil
-	}
-
-	// Remove the cache so we don't process it again
-	delete(p.slotCaches, slot)
-	p.mu.Unlock()
-
-	// Prepare the stats
-	stats := make([]*repository.SlotMessageStats, 0, len(cache.MessageStats))
-	for _, messageStat := range cache.MessageStats {
-		stats = append(stats, messageStat)
-	}
-
-	return stats
 }
 
 // saveToRepository saves the stats to the repository in batches
