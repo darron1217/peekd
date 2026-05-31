@@ -87,9 +87,9 @@ func NewHost(opts ...HostOptionFunc) (*Host, error) {
 		port:        9090,
 		privateKey:  nil,
 		userAgent:   "libp2p-host",
-		targetPeers: 100,
+		targetPeers: 80,
 		rcMgr:       nil,
-		connMgr:     connmgr.NullConnMgr{}, // TODO: need to custom connection manager?
+		connMgr:     connmgr.NullConnMgr{},
 	}
 
 	for _, opt := range opts {

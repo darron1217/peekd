@@ -11,6 +11,7 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	gcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	cm "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/pkg/errors"
 	"github.com/post-pectra/peekd/gossip"
 	"github.com/post-pectra/peekd/host"
@@ -151,7 +152,7 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 		listenIP:           "127.0.0.1",
 		portUDP:            9090,
 		portTCP:            9090,
-		targetPeers:        100,
+		targetPeers:        80,
 		ethNetwork:         params.MainnetName,
 		nodeAlias:          "",
 		nodeRegion:         "",
@@ -187,12 +188,21 @@ func NewWatcher(opts ...WatcherOptionFunc) (*Watcher, error) {
 
 	supervisor := suture.NewSimple("watcher")
 
+	connMgr, err := cm.NewConnManager(
+		o.targetPeers,
+		o.targetPeers*5/4,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create connection manager")
+	}
+
 	localHost, err := host.NewHost(
 		host.WithListenIP(o.listenIP),
 		host.WithPort(o.portTCP),
 		host.WithPrivateKey(secpKey),
 		host.WithUserAgent(UserAgent),
 		host.WithTargetPeers(o.targetPeers),
+		host.WithConnMgr(connMgr),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create host")

@@ -26,9 +26,9 @@ import (
 const (
 	gossipThreshold = -100.0
 
-	gossipSubD   = 8
-	gossipSubDlo = 6
-	gossipSubDhi = 12
+	gossipSubD   = 6
+	gossipSubDlo = 5
+	gossipSubDhi = 9
 
 	gossipSubMCacheLen    = 6
 	gossipSubMCacheGossip = 3
